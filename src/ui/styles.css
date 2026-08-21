@@ -1,0 +1,277 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* The browser default is `[hidden] { display: none }`, which any id selector
+   with a `display` beats on specificity. Without this, `element.hidden = true`
+   silently does nothing to #overlay and #hud. */
+[hidden] {
+  display: none !important;
+}
+
+body {
+  overflow: hidden;
+  background: #000;
+  font-family: system-ui, sans-serif;
+}
+
+canvas#app {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Entry overlay — pointer lock only works from a real user gesture */
+#overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 12, 16, 0.86);
+  backdrop-filter: blur(6px);
+  color: #f2f2f2;
+  z-index: 10;
+}
+
+#overlay .panel {
+  text-align: center;
+  max-width: 30rem;
+  padding: 2rem;
+}
+
+#overlay h1 {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.02em;
+}
+
+#overlay p {
+  opacity: 0.7;
+  margin-bottom: 1.75rem;
+  line-height: 1.6;
+}
+
+#overlay button {
+  padding: 0.85rem 2rem;
+  font-size: 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: #e02020;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+#overlay button:hover {
+  background: #ff3030;
+}
+
+/* Spray cursor: the nozzle outline, sized every frame by SprayCursor to match
+   the footprint the can would actually cover at the current distance.
+   vector-effect keeps the stroke 1.5px however far the shape is scaled. */
+#crosshair {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform: translate(-50%, -50%);
+  overflow: visible;
+  pointer-events: none;
+}
+
+#crosshair path {
+  fill: none;
+}
+
+#crosshair .backing {
+  stroke: rgba(0, 0, 0, 0.45);
+  stroke-width: 3.5px;
+}
+
+#crosshair .edge {
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 1.5px;
+}
+
+#palette {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  background: rgba(20, 22, 28, 0.75);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+}
+
+#palette button {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  transition:
+    transform 0.12s ease,
+    border-color 0.12s ease;
+}
+
+#palette button[aria-pressed="true"] {
+  border-color: #fff;
+  transform: scale(1.15);
+}
+
+/* Backpack: where the caps live. Pointer lock is released while it is open,
+   so the slots are clickable with a real cursor. */
+#inventory {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(8, 10, 14, 0.88);
+  backdrop-filter: blur(6px);
+  color: #f2f2f2;
+  z-index: 20;
+  overflow-y: auto;
+}
+
+.backpack {
+  width: min(46rem, 100%);
+  border-radius: 1.6rem;
+  /* Worn canvas, lit from above */
+  background:
+    linear-gradient(180deg, #43403a 0%, #35322d 42%, #2b2925 100%);
+  box-shadow:
+    0 1.5rem 3rem rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* The flap across the top, with its stitching and a buckle either side */
+.backpack .flap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.5rem;
+  border-radius: 1.6rem 1.6rem 0.5rem 0.5rem;
+  background: linear-gradient(180deg, #4d4941 0%, #3d3a34 100%);
+  border-bottom: 2px dashed rgba(255, 255, 255, 0.14);
+  box-shadow: 0 0.4rem 1rem rgba(0, 0, 0, 0.35);
+}
+
+.backpack .flap h2 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+.backpack .buckle {
+  width: 1.6rem;
+  height: 0.9rem;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  border-radius: 0.2rem;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+/* The main compartment: recessed, so the slots read as things inside it */
+.backpack .pocket {
+  margin: 1.25rem;
+  padding: 1.1rem;
+  border-radius: 1rem;
+  background: rgba(0, 0, 0, 0.28);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.pocket-label {
+  margin: 0 0 0.85rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.45;
+}
+
+#caps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.7rem;
+}
+
+button.cap-slot {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: center;
+  padding: 0.9rem 0.6rem 0.8rem;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease,
+    transform 0.12s ease;
+}
+
+button.cap-slot:hover {
+  border-color: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.09);
+  transform: translateY(-2px);
+}
+
+button.cap-slot[aria-pressed="true"] {
+  border-color: #e02020;
+  background: rgba(224, 32, 32, 0.16);
+}
+
+/* Each cap sits on a dark disc, like looking down into the pocket */
+.cap-art {
+  display: grid;
+  place-items: center;
+  width: 3.4rem;
+  height: 3.4rem;
+  margin-bottom: 0.2rem;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.cap-art svg {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.cap-art svg path {
+  fill: rgba(255, 255, 255, 0.88);
+}
+
+button.cap-slot[aria-pressed="true"] .cap-art svg path {
+  fill: #ff5252;
+}
+
+.cap-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.cap-hint {
+  font-size: 0.72rem;
+  line-height: 1.35;
+  opacity: 0.5;
+}
+
+.backpack .hint {
+  margin: 0;
+  padding: 0 1.5rem 1.25rem;
+  text-align: center;
+  font-size: 0.8rem;
+  opacity: 0.4;
+}

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <title>Graffiti Center</title>
+    <link rel="stylesheet" href="/src/ui/styles.css" />
+  </head>
+  <body>
+    <canvas id="app"></canvas>
+
+    <div id="overlay">
+      <div class="panel">
+        <h1>Graffiti Center</h1>
+        <p>
+          WASD to walk &middot; Mouse to look &middot; Hold left click to spray
+          <br />
+          Shift to run &middot; Space to jump &middot; Ctrl to crouch
+          <br />
+          Alt + wheel to resize the spray &middot; I for the backpack
+          <br />
+          Hold on one spot and the paint starts to run
+          <br />
+          1&ndash;0 to pick a color &middot; Ctrl+Z to undo
+        </p>
+        <button id="start">Enter the city</button>
+      </div>
+    </div>
+
+    <div id="hud" hidden>
+      <!-- Two stacked paths: a dark backing stroke under a light one, so the
+           outline stays readable over both bare concrete and fresh paint. -->
+      <svg id="crosshair" viewBox="-50 -50 100 100" aria-hidden="true">
+        <path class="backing" vector-effect="non-scaling-stroke" />
+        <path class="edge" vector-effect="non-scaling-stroke" />
+      </svg>
+      <div id="palette"></div>
+    </div>
+
+    <div id="inventory" hidden>
+      <div class="backpack">
+        <div class="flap">
+          <span class="buckle"></span>
+          <h2>Backpack</h2>
+          <span class="buckle"></span>
+        </div>
+
+        <div class="pocket">
+          <p class="pocket-label">Caps</p>
+          <div id="caps"></div>
+        </div>
+
+        <p class="hint">Press I or Esc to sling it back on</p>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
