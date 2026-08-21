@@ -7,26 +7,59 @@
       content="width=device-width, initial-scale=1.0, user-scalable=no"
     />
     <title>Graffiti Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sedgwick+Ave+Display&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="/src/ui/styles.css" />
   </head>
   <body>
     <canvas id="app"></canvas>
 
-    <div id="overlay">
+    <div id="loading">
+      <div class="spinner"></div>
+    </div>
+
+    <div id="menu">
       <div class="panel">
-        <h1>Graffiti Center</h1>
-        <p>
-          WASD to walk &middot; Mouse to look &middot; Hold left click to spray
-          <br />
-          Shift to run &middot; Space to jump &middot; Ctrl to crouch
-          <br />
-          Alt + wheel to resize the spray &middot; I for the backpack
-          <br />
-          Hold on one spot and the paint starts to run
-          <br />
-          1&ndash;0 to pick a color &middot; Ctrl+Z to undo
-        </p>
-        <button id="start">Enter the city</button>
+        <section class="screen" data-screen="main">
+          <h1>Graffiti Center</h1>
+          <button class="menu-item" data-action="play" type="button">
+            Jogar
+          </button>
+
+          <div class="menu-group">
+            <p class="menu-group-label">Configurações</p>
+            <div class="menu-choices" id="mode-choices"></div>
+          </div>
+
+          <button class="menu-item ghost" data-action="controls" type="button">
+            Controles
+          </button>
+        </section>
+
+        <section class="screen" data-screen="pause" hidden>
+          <h2>Pausado</h2>
+          <button class="menu-item" data-action="resume" type="button">
+            Continuar jogando
+          </button>
+          <button class="menu-item ghost" data-action="controls" type="button">
+            Controles
+          </button>
+          <button class="menu-item ghost" data-action="quit" type="button">
+            Sair
+          </button>
+        </section>
+
+        <section class="screen" data-screen="controls" hidden>
+          <h2>Controles</h2>
+          <div id="control-list"></div>
+          <button class="menu-link" data-action="back" type="button">
+            Voltar
+          </button>
+        </section>
       </div>
     </div>
 
@@ -44,16 +77,13 @@
       <div class="backpack">
         <div class="flap">
           <span class="buckle"></span>
-          <h2>Backpack</h2>
+          <h2>Mochila</h2>
           <span class="buckle"></span>
         </div>
 
-        <div class="pocket">
-          <p class="pocket-label">Caps</p>
-          <div id="caps"></div>
-        </div>
+        <div id="pockets"></div>
 
-        <p class="hint">Press I or Esc to sling it back on</p>
+        <p class="hint">I ou Esc para fechar</p>
       </div>
     </div>
 

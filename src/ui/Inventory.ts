@@ -1,4 +1,4 @@
-import { CAPS, type CapId } from "../config";
+import { CAP_CATEGORIES, capsIn, type CapId } from "../config";
 import { CAP_PATHS } from "./CapIcons";
 import type { SprayCan } from "../paint/SprayCan";
 
@@ -21,22 +21,38 @@ export class Inventory {
     private onPicked: () => void,
   ) {
     this.root = document.getElementById("inventory")!;
-    const pocket = document.getElementById("caps")!;
+    const pockets = document.getElementById("pockets")!;
 
-    for (const cap of CAPS) {
-      const slot = document.createElement("button");
-      slot.className = "cap-slot";
-      slot.type = "button";
-      slot.innerHTML =
-        `<span class="cap-art">` +
-        `<svg viewBox="-62 -62 124 124" aria-hidden="true">` +
-        `<path d="${CAP_PATHS[cap.id]}" /></svg>` +
-        `</span>` +
-        `<span class="cap-name">${cap.label}</span>` +
-        `<span class="cap-hint">${cap.hint}</span>`;
-      slot.addEventListener("click", () => this.pick(cap.id));
-      this.slots.set(cap.id, slot);
-      pocket.appendChild(slot);
+    // One pocket per category. Built from the data rather than the markup, so
+    // adding a cap is still a one-line change in config.
+    for (const category of CAP_CATEGORIES) {
+      const pocket = document.createElement("section");
+      pocket.className = "pocket";
+      pocket.innerHTML =
+        `<p class="pocket-label">${category.label}</p>` +
+        `<p class="pocket-hint">${category.hint}</p>`;
+
+      const slots = document.createElement("div");
+      slots.className = "slots";
+
+      for (const cap of capsIn(category.id)) {
+        const slot = document.createElement("button");
+        slot.className = "cap-slot";
+        slot.type = "button";
+        slot.innerHTML =
+          `<span class="cap-art">` +
+          `<svg viewBox="-62 -62 124 124" aria-hidden="true">` +
+          `<path d="${CAP_PATHS[cap.id]}" /></svg>` +
+          `</span>` +
+          `<span class="cap-name">${cap.label}</span>` +
+          `<span class="cap-hint">${cap.hint}</span>`;
+        slot.addEventListener("click", () => this.pick(cap.id));
+        this.slots.set(cap.id, slot);
+        slots.appendChild(slot);
+      }
+
+      pocket.appendChild(slots);
+      pockets.appendChild(pocket);
     }
 
     this.syncSelection();

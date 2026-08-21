@@ -38,7 +38,8 @@ export class Input {
     return len > 0 ? { x: x / len, z: z / len } : { x: 0, z: 0 };
   }
 
-  get isRunning() {
+  /** Sprints on foot, sinks in free flight — Movement decides which. */
+  get isShiftDown() {
     return this.isDown("ShiftLeft") || this.isDown("ShiftRight");
   }
 
@@ -47,11 +48,11 @@ export class Input {
   }
 
   /**
-   * Held rather than edge triggered, so keeping space down keeps hopping.
-   * That is the useful behaviour here: you jump to reach the top of a wall and
+   * Jumps on foot, climbs in free flight. Held rather than edge triggered, so
+   * keeping it down keeps hopping — you jump to reach the top of a wall and
    * usually want a second go straight away.
    */
-  get isJumping() {
+  get isSpaceDown() {
     return this.isDown("Space");
   }
 }

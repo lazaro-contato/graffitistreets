@@ -37,8 +37,22 @@ export class DripSystem {
     return this.active.length;
   }
 
-  /** Starts a run at a soaked spot. `sprayRadius` is in meters. */
-  spawn(side: Side, u: number, v: number, color: string, sprayRadius: number) {
+  /**
+   * Starts a run at a soaked spot.
+   *
+   * `sprayRadius` is in meters and `soakSeconds` is how long the trigger has
+   * been held on this spot without a break. Both feed the starting width,
+   * because both decide how much wet paint is on the wall: a wide blast loads
+   * it faster, and holding on loads it for longer.
+   */
+  spawn(
+    side: Side,
+    u: number,
+    v: number,
+    color: string,
+    sprayRadius: number,
+    soakSeconds: number,
+  ) {
     if (this.active.length >= DRIP.MAX_ACTIVE) return;
 
     // Paint pools at the bottom of the sprayed patch, not at its centre.
@@ -46,7 +60,15 @@ export class DripSystem {
     // Spraying at the foot of the wall has nowhere left to run.
     if (startV <= 0) return;
 
-    const radius = Math.max(DRIP.MIN_RADIUS, sprayRadius * DRIP.RADIUS);
+    // Paint keeps piling on past the point where it first broke, so runs shed
+    // later in a long hold come off heavier than the first one.
+    const heldOn = Math.max(0, soakSeconds - DRIP.HOLD_TIME);
+    const flood = Math.min(DRIP.MAX_FLOOD, 1 + heldOn * DRIP.FLOOD_GROWTH);
+
+    const radius = Math.max(
+      DRIP.MIN_START_RADIUS,
+      sprayRadius * DRIP.START_WIDTH * flood,
+    );
     const jitter = 1 + (Math.random() * 2 - 1) * DRIP.LENGTH_JITTER;
 
     const drip: Drip = {
@@ -86,8 +108,9 @@ export class DripSystem {
 
       // Dried up, or reached the pavement.
       if (progress >= 1 || drip.v <= 0) {
-        // A run that stops leaves its bead behind as a fat spot.
-        this.append(drip, drip.radius * DRIP.BEAD);
+        // One last point at the tapered width, so the trail comes to a point
+        // instead of stopping mid-stride.
+        this.append(drip, drip.radius);
         this.transport.send({ kind: "stroke:end", strokeId: drip.strokeId });
         this.active.splice(i, 1);
         continue;

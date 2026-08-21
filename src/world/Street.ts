@@ -42,8 +42,9 @@ export function buildStreet(scene: THREE.Scene) {
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   // Explicit shadow camera bounds are mandatory: the default frustum is small
-  // and shadows would vanish at the far end of the street.
-  const d = 40;
+  // and shadows would vanish at the far end of the street. Keep them just wide
+  // enough for the world — every spare meter costs shadow resolution.
+  const d = Math.max(WORLD.STREET_LENGTH, WORLD.STREET_WIDTH) * 0.9;
   sun.shadow.camera.left = -d;
   sun.shadow.camera.right = d;
   sun.shadow.camera.top = d;

@@ -21,6 +21,8 @@ export class PaintSystem {
   private dwellU = 0;
   private dwellV = 0;
   private dwellTime = 0;
+  /** Total time held on this spot. Unlike dwellTime, a run does not reset it. */
+  private dwellSoak = 0;
   private dwellAnchored = false;
   private dwellHasRun = false;
 
@@ -133,12 +135,14 @@ export class PaintSystem {
       this.dwellU = target.u;
       this.dwellV = target.v;
       this.dwellTime = 0;
+      this.dwellSoak = 0;
       this.dwellAnchored = true;
       this.dwellHasRun = false;
       return;
     }
 
     this.dwellTime += dt;
+    this.dwellSoak += dt;
     const threshold = this.dwellHasRun ? DRIP.REPEAT_TIME : DRIP.HOLD_TIME;
     if (this.dwellTime < threshold) return;
 
@@ -151,12 +155,14 @@ export class PaintSystem {
       target.v,
       this.can.color,
       sprayRadius,
+      this.dwellSoak,
     );
   }
 
   private resetDwell() {
     this.dwellAnchored = false;
     this.dwellTime = 0;
+    this.dwellSoak = 0;
     this.dwellHasRun = false;
   }
 

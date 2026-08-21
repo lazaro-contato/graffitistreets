@@ -31,6 +31,10 @@ English.** Only `context.md`, the original spec, is in Portuguese.
 | 2.3   | Uniform wall resolution — round sprays, journal in world units | Done  |
 | 2.4   | Backpack (I) with seven caps, data driven                     | Done   |
 | 2.5   | Paint runs from over-spraying one spot                        | Done   |
+| 2.6   | Range-driven cone, caps split from tools                      | Done   |
+| 2.7   | Smaller arena (8 x 3 m walls) and a free flight mode          | Done   |
+| 2.8   | Menu: main, pause, controls, and mode as a setting            | Done   |
+| 2.9   | Menu artwork, display face, loading spinner, Portuguese copy  | Done   |
 | 3     | Polish: audio, IndexedDB persistence, PNG export, mobile     | To do  |
 | 4     | Server persistence (journal + WebP snapshots)                | To do  |
 | 5     | Multiplayer cities (Colyseus, avatars, lobby)                | To do  |
@@ -77,8 +81,25 @@ player. Retrofitting identity into single player code means an optional
 ## Paint runs
 
 Hold the spray on one spot for `DRIP.HOLD_TIME` and the wall floods; gravity
-takes over and a bead runs down, thinning as it goes and leaving a fat blob
-where it dries.
+takes over and a bead runs down, widest where it breaks away and tapering the
+whole way to a thread.
+
+The run's starting width answers to **two** things, because both decide how
+much wet paint is on the wall when it breaks:
+
+- **The width of the blast.** A quarter of the spray, so a 10 cm cone sheds a
+  2.5 cm run and a tight one sheds a thread.
+- **How long the trigger has been held.** Paint keeps piling on past the moment
+  the first run broke, so each following run comes off heavier — `FLOOD_GROWTH`
+  per second, capped at `MAX_FLOOD` so a long hold cannot run away.
+
+`PaintSystem` therefore tracks two clocks on the same spot: `dwellTime`, which
+resets on every run and decides *when* the next one breaks, and `dwellSoak`,
+which does not and decides *how heavy* it is. Both reset when the aim moves off
+the spot or the trigger is released.
+
+There is a floor on the width: point blank the sprayed patch is only 1 cm
+across, and a strict quarter of that would be invisible.
 
 The design point worth keeping: **a run is an ordinary `Stroke`**, appended to
 over time as it descends. It is not a separate effect layer. That is what makes
@@ -95,14 +116,44 @@ undo, journal replay and future network sync work on runs with no extra code —
 
 ---
 
-## Caps
+## Range is the main control
 
-Seven caps: circle, square, triangle, flare, calligraphy, marker, roller.
+Distance to the wall is what the player actually plays with. Walking in tightens
+the cone towards a **1 cm dot that bites in a tenth of a second**; backing off
+to `SPRAY.MAX_DISTANCE` opens it to **30 cm that needs three quarters of a
+second** to cover. Reach versus control, paid for in both directions.
 
-A cap is **pure data** in `config.ts` — a base outline (ellipse, rect or
-triangle), an aspect ratio, an angle, and how the paint comes out (size,
-softness, flow, grain). Adding one is adding a row. There is no per-cap
-branching in the brush, and the backpack and the cursor pick it up on their own.
+`SprayCan.radiusAt()` is linear in range because a cone is: width grows in
+proportion to how far the can sits from the wall. `alphaAt()` is the mirror —
+the same paint landing on a smaller patch has to bite harder — shaped by
+`SPRAY.ALPHA_CURVE` so the strong end stays near the wall.
+
+Both clamp outside `MIN_DISTANCE..MAX_DISTANCE`, so nothing degenerates when
+the player is pressed against a wall or aiming past the limit.
+
+**This applies to caps only.** Tools are held flat against the wall, so their
+footprint and opacity do not move with range at all — see below.
+
+---
+
+## Caps and tools
+
+Two categories, and the split is not cosmetic:
+
+- **Caps** (circle, square, flare) are spray cones. Range drives their width
+  and their bite.
+- **Tools** (calligraphy, marker, roller) are pressed against the wall. They
+  mark the same at any range.
+
+Six entries in all. The `triangle` *shape* primitive is still in
+`CapGeometry`, unused by any current entry — it costs nothing and keeps adding
+a wedge cap a one-line change.
+
+A cap is **pure data** in `config.ts` — a category, a base outline (ellipse,
+rect or triangle), an aspect ratio, an angle, and how the paint comes out
+(size, softness, flow, grain). Adding one is adding a row. There is no per-cap
+branching in the brush, and the backpack builds its pockets from the
+categories, so a new entry needs no UI work at all.
 
 Caps do not turn with the stroke. That is the point of the flat ones: a
 calligraphy cap paints thick across its edge and thin along it.
@@ -129,6 +180,83 @@ the cursor quietly lies about what the paint will do.
 The cap is recorded **on the stroke**, not read from the can at render time —
 otherwise replaying the journal would repaint old work with whatever cap is
 fitted now.
+
+---
+
+## Front door
+
+`public/menu-bg.jpg` backs the main menu, and the controls sheet keeps it when
+opened from there. Once the player is in and pauses, the scrim goes plain — the
+street behind it is the better backdrop. `Menu.show()` decides, via a
+`data-art` attribute.
+
+The path lives in `MENU_ART` in `Menu.ts` and reaches the stylesheet as the
+`--menu-art` custom property, so the loader preloads the exact same file. Two
+copies of that path would drift and the menu would flash in unpainted.
+
+`#loading` is a spinner in the **markup**, not the module, so the browser
+paints it before the module script runs and starts building wall panels. It
+animates a `transform`, which stays on the compositor and keeps turning even
+while the main thread is blocked doing that work. It clears once the artwork
+has decoded and the display face has loaded, with a 6 s race so a slow font CDN
+can delay the game but never block it.
+
+Headings and buttons use Sedgwick Ave Display; body copy does not. A marker
+face is unreadable at 0.8 rem in a two-column key list.
+
+---
+
+## Screens and pointer lock
+
+Four states, and only one of them holds the pointer:
+
+| State | Pointer | Shown |
+| ----- | ------- | ----- |
+| playing | locked | HUD |
+| menu: main | free | Play, mode setting, Controls |
+| menu: pause | free | Resume, Controls, Quit to menu |
+| menu: controls | free | key list, Back |
+| backpack | free | cap slots |
+
+Everything except `playing` needs a real mouse cursor, so lock state and screen
+state must never drift apart. `main.ts` owns the machine: every way back into
+the street goes through `enterStreet()`, and losing the lock for any other
+reason — Esc, the tab going to the background — raises the pause screen.
+
+Two things this has to get right:
+
+- **Not every unlock is the player leaving.** Opening the backpack releases the
+  lock deliberately, so the unlock listener checks for that before pausing.
+- **A lock request can be refused.** Browsers reject one that arrives too soon
+  after an Esc exit, and there is no way to ask in advance. `enterStreet` takes
+  a `refuge` screen and falls back to it after 500 ms rather than stranding the
+  player with no cursor, no HUD and no way back in.
+
+The controls sheet is shared by the main and pause screens and remembers which
+one opened it, so Back is honest either way.
+
+---
+
+## Movement modes
+
+Two, chosen in the main menu's settings rather than toggled in play, because
+they change what shift and space do and swapping that mid-flight would be
+disorienting. Quit to menu to change it.
+
+- **On foot** — gravity, `Space` jumps 0.80 m, `Shift` sprints.
+- **Free flight** — no gravity, `Space` climbs, `Shift` sinks. The eye is
+  capped at `PLAYER.FLY_CEILING`, half a metre over the wall.
+
+The cap is on the **eye**, not the feet, so crouching in mid air cannot buy
+extra altitude. Flight also keeps full horizontal authority: you are steering,
+not falling, so air control and air drag stay out of it.
+
+Free flight is not a debug toy — from 2 m out the ray to the top of the wall is
+2.39 m, past `SPRAY.MAX_DISTANCE`, so the top band is genuinely hard to reach
+on foot.
+
+`MoveIntent` names its two booleans `shift` and `space`, after the keys, since
+what they mean depends on the mode.
 
 ---
 
@@ -261,6 +389,7 @@ src/
   ui/
     styles.css
     Hud.ts                  palette, color shortcuts, alt + wheel resize
+    Menu.ts                 main, pause and controls screens
     Inventory.ts            the backpack, opened with I
     CapIcons.ts             cap outlines as SVG, generated from the same geometry
     SprayCursor.ts          the cap outline, sized to the real footprint
@@ -282,11 +411,14 @@ Nothing in `world/` or `player/` imports from `ui/`.
       Z (street length)
 ```
 
-- The street runs along **Z**, from `-30` to `+30`
+- The street runs along **Z**, from `-4` to `+4`
 - Width runs along **X**, from `-6` to `+6`
 - Left wall at `x = -6`, paintable face looking towards `+X`
 - Right wall at `x = +6`, paintable face looking towards `-X`
-- Ground at `y = 0`, wall top at `y = 4`, player eyes at `y = 1.7`
+- Ground at `y = 0`, wall top at `y = 3`, player eyes at `y = 1.7`
+
+An 8 x 3 m wall each side, two panels per side. Deliberately small: the arena
+is a place to paint one piece, not a map to explore.
 
 `PlaneGeometry` is born on the XY plane with its normal at `+Z`. Rotating
 `+PI/2` around Y aims it at `+X` (left wall); `-PI/2` aims it at `-X`.
@@ -375,6 +507,7 @@ Node is managed by nvm; this project is verified on Node 20.19.4.
 | Ctrl         | Crouch (hold)            |
 | Mouse        | Look                     |
 | Left click   | Spray (hold)             |
+| Wheel        | Cycle through the palette |
 | Alt + wheel  | Spray cone size          |
 | I            | Open / close the nozzle inventory |
 | 1-9, 0       | Pick a palette color     |

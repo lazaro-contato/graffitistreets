@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
 import { Movement } from "./Movement";
 import { Input } from "../core/Input";
-import { PLAYER, HALF_LENGTH } from "../config";
+import { PLAYER, HALF_LENGTH, type MovementMode } from "../config";
 
 /**
  * First person player: pointer lock for looking, Movement for walking.
@@ -23,15 +23,19 @@ export class Player {
     camera.position.set(0, PLAYER.EYE_HEIGHT, HALF_LENGTH * 0.4);
   }
 
+  setMode(mode: MovementMode) {
+    this.movement.setMode(mode);
+  }
+
   update(dt: number) {
     if (!this.controls.isLocked) return;
     this.movement.update(
       this.camera,
       {
         move: this.input.getMoveVector(),
-        running: this.input.isRunning,
+        shift: this.input.isShiftDown,
+        space: this.input.isSpaceDown,
         crouching: this.input.isCrouching,
-        jumping: this.input.isJumping,
       },
       dt,
     );

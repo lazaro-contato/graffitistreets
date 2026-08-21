@@ -13,10 +13,11 @@ import { LocalTransport } from "./net/LocalTransport";
 import { buildHud } from "./ui/Hud";
 import { SprayCursor } from "./ui/SprayCursor";
 import { Inventory } from "./ui/Inventory";
+import { Menu, MENU_ART, type MenuScreen } from "./ui/Menu";
 
 const canvas = document.getElementById("app") as HTMLCanvasElement;
-const overlay = document.getElementById("overlay")!;
 const hud = document.getElementById("hud")!;
+const loading = document.getElementById("loading")!;
 
 const engine = new Engine(canvas);
 const loop = new Loop();
@@ -57,45 +58,68 @@ transport.onMessage((message) => {
   }
 });
 
-buildHud(can);
+buildHud(can, () => player.controls.isLocked);
 
-// The inventory needs a real mouse cursor to be clickable, so opening it
-// releases the pointer lock and closing it asks for the lock back.
-const inventory = new Inventory(can, () => closeInventory());
+// Everything below is one state machine with four states: playing, the menu
+// (main / pause / controls), and the backpack. Only "playing" holds pointer
+// lock, and every other state needs a real mouse cursor, so the two must never
+// drift apart — every transition goes through enterStreet or a menu.show.
 
-function openInventory() {
+const menu = new Menu({
+  onPlay: () => {
+    player.setMode(menu.mode);
+    enterStreet("main");
+  },
+  onResume: () => enterStreet("pause"),
+  onQuit: () => menu.show("main"),
+});
+
+const inventory = new Inventory(can, () => closeBackpack());
+
+/**
+ * Asks for the pointer back.
+ *
+ * Browsers refuse a lock request that arrives too soon after an Esc exit, and
+ * there is no way to ask whether this one will be honoured. If it was not,
+ * fall back to `refuge` rather than stranding the player with no cursor, no
+ * HUD and no way back in.
+ */
+function enterStreet(refuge: MenuScreen) {
+  menu.hide();
+  inventory.close();
+  player.controls.lock();
+
+  window.setTimeout(() => {
+    if (!player.controls.isLocked && !menu.isOpen && !inventory.isOpen) {
+      menu.show(refuge);
+    }
+  }, 500);
+}
+
+function openBackpack() {
   if (inventory.isOpen) return;
   inventory.open();
   hud.hidden = true;
   player.controls.unlock();
 }
 
-function closeInventory() {
+function closeBackpack() {
   if (!inventory.isOpen) return;
-  inventory.close();
-  player.controls.lock();
-
-  // Browsers can refuse a lock request that comes too soon after an exit.
-  // If it did not take, fall back to the entry overlay rather than stranding
-  // the player with no cursor, no HUD and no way back in.
-  window.setTimeout(() => {
-    if (!player.controls.isLocked && !inventory.isOpen) overlay.hidden = false;
-  }, 500);
+  enterStreet("pause");
 }
 
-document.getElementById("start")!.addEventListener("click", () => {
-  player.controls.lock();
-});
-
 player.controls.addEventListener("lock", () => {
-  overlay.hidden = true;
+  menu.hide();
+  inventory.close();
   hud.hidden = false;
 });
 
 player.controls.addEventListener("unlock", () => {
   hud.hidden = true;
-  // Releasing the lock for the inventory is not the player leaving the city.
-  if (!inventory.isOpen) overlay.hidden = false;
+  // Losing the lock on its own — Esc, or the tab going to the background —
+  // means the player stepped away, so pause. Unless we let go of it ourselves
+  // to open the backpack, or a menu screen is already up.
+  if (!inventory.isOpen && !menu.isOpen) menu.show("pause");
 });
 
 window.addEventListener("keydown", (e) => {
@@ -106,13 +130,44 @@ window.addEventListener("keydown", (e) => {
   }
 
   if (e.code === "KeyI") {
-    if (inventory.isOpen) closeInventory();
-    else if (player.controls.isLocked) openInventory();
+    if (inventory.isOpen) closeBackpack();
+    else if (player.controls.isLocked) openBackpack();
     return;
   }
 
-  if (e.code === "Escape" && inventory.isOpen) closeInventory();
+  if (e.code !== "Escape") return;
+
+  // Escape while locked is the browser's to handle: it drops the lock and the
+  // unlock listener above brings up the pause screen.
+  if (inventory.isOpen) closeBackpack();
+  else if (menu.current === "controls") menu.back();
+  else if (menu.current === "pause") enterStreet("pause");
 });
+
+/**
+ * Holds the loader up until the front door can be painted properly.
+ *
+ * Only the menu artwork and the display face are worth waiting on — the world
+ * itself is already built by the time this runs, synchronously, above. The
+ * race is a safety net: a slow font CDN must delay the game, never block it.
+ */
+async function waitForFrontDoor() {
+  const art = new Image();
+  art.src = MENU_ART;
+
+  await Promise.race([
+    Promise.allSettled([
+      art.decode(),
+      document.fonts.load('1rem "Sedgwick Ave Display"'),
+    ]),
+    new Promise((resolve) => window.setTimeout(resolve, 6000)),
+  ]);
+}
+
+await waitForFrontDoor();
+menu.show("main");
+loading.classList.add("done");
+window.setTimeout(() => loading.remove(), 400);
 
 // Order matters: move, aim, paint, then flush, then render. Aim runs before
 // paint so both the spray and the cursor act on the same frame's raycast, and
