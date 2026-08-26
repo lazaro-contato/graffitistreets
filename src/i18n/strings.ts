@@ -1,0 +1,179 @@
+export type Locale = "pt" | "en";
+
+export const LOCALES: readonly { id: Locale; label: string }[] = [
+  { id: "pt", label: "Português" },
+  { id: "en", label: "English" },
+];
+
+/**
+ * Every word the interface says.
+ *
+ * Copy lives here rather than in `config.ts` because config is tuning — the
+ * numbers that decide how the game feels. A cap's label is not a property of
+ * the cap; it is a property of the language being read.
+ *
+ * "Cap" and "flare" stay untranslated in both: they are the words the graffiti
+ * world uses, in Portuguese as much as in English.
+ */
+export const STRINGS: Record<Locale, Record<string, string>> = {
+  pt: {
+    "meta.title": "Graffiti Streets",
+
+    "menu.kicker.main": "// pegue sua lata",
+    "menu.kicker.modes": "// como você vai andar",
+    "menu.kicker.language": "// idioma",
+    "menu.play": "Jogar",
+    "menu.controls": "Controles",
+    "menu.paused": "Pausado",
+    "menu.resume": "Continuar jogando",
+    "menu.quit": "Sair",
+    "menu.back": "Voltar",
+
+    "mode.walk.label": "A pé",
+    "mode.walk.hint": "Shift corre, espaço pula",
+    "mode.free.label": "Voo livre",
+    "mode.free.hint": "Espaço sobe, shift desce",
+
+    "bag.title": "Mochila",
+    "bag.close": "I ou Esc para fechar",
+    "bag.cap.label": "Caps",
+    "bag.cap.hint":
+      "Afaste-se para alcançar mais, chegue perto para um traço fino e forte",
+    "bag.tool.label": "Ferramentas",
+    "bag.tool.hint": "Encostados no muro — a mesma marca em qualquer distância",
+
+    "cap.circle.label": "Redondo",
+    "cap.circle.hint": "O cap do dia a dia",
+    "cap.square.label": "Quadrado",
+    "cap.square.hint": "Chapado, cantos duros",
+    "cap.flare.label": "Flare",
+    "cap.flare.hint": "Largo, suave, baixa pressão",
+    "cap.calligraphy.label": "Caligrafia",
+    "cap.calligraphy.hint": "Ponta inclinada, grosso e fino",
+    "cap.marker.label": "Marcador",
+    "cap.marker.hint": "Ponta chanfrada, nítida e opaca",
+    "cap.roller.label": "Rolo",
+    "cap.roller.hint": "Cobre área rápido",
+
+    "hint.backpack": "para abrir a mochila",
+    "hint.photo": "tirar uma foto",
+
+    "controls.moving.title": "Movimentação",
+    "controls.walk.key": "WASD / setas",
+    "controls.walk.action": "Andar",
+    "controls.look.key": "Mouse",
+    "controls.look.action": "Olhar",
+    "controls.shift.key": "Shift",
+    "controls.shift.action": "Corre a pé, desce no voo livre",
+    "controls.space.key": "Espaço",
+    "controls.space.action": "Pula a pé, sobe no voo livre",
+    "controls.crouch.key": "Ctrl",
+    "controls.crouch.action": "Agachar",
+
+    "controls.painting.title": "Pintura",
+    "controls.spray.key": "Clique esquerdo",
+    "controls.spray.action": "Segure para pintar",
+    "controls.colour.key": "Scroll",
+    "controls.colour.action": "Trocar de cor",
+    "controls.size.key": "Alt + scroll",
+    "controls.size.action": "Tamanho do spray",
+    "controls.palette.key": "1 – 0",
+    "controls.palette.action": "Escolher uma cor direto",
+    "controls.bag.key": "I",
+    "controls.bag.action": "Abrir a mochila e trocar de cap",
+    "controls.photo.key": "P",
+    "controls.photo.action": "Tirar uma foto do muro",
+    "controls.undo.key": "Ctrl / Cmd + Z",
+    "controls.undo.action": "Desfazer o último traço",
+    "controls.pause.key": "Esc",
+    "controls.pause.action": "Pausar",
+
+    "controls.knowing.title": "Vale saber",
+    "controls.near.key": "Chegue perto",
+    "controls.near.action": "O jato fecha até 1 cm e pega rápido",
+    "controls.far.key": "Afaste-se",
+    "controls.far.action": "Abre até 30 cm, mas a tinta sai fraca",
+    "controls.hold.key": "Fique parado",
+    "controls.hold.action": "O muro satura e a tinta escorre",
+  },
+
+  en: {
+    "meta.title": "Graffiti Streets — paint graffiti in 3D, free in your browser",
+
+    "menu.kicker.main": "// grab a can",
+    "menu.kicker.modes": "// how you will get around",
+    "menu.kicker.language": "// language",
+    "menu.play": "Play",
+    "menu.controls": "Controls",
+    "menu.paused": "Paused",
+    "menu.resume": "Resume",
+    "menu.quit": "Quit to menu",
+    "menu.back": "Back",
+
+    "mode.walk.label": "On foot",
+    "mode.walk.hint": "Shift runs, space jumps",
+    "mode.free.label": "Free flight",
+    "mode.free.hint": "Space rises, shift sinks",
+
+    "bag.title": "Backpack",
+    "bag.close": "I or Esc to close",
+    "bag.cap.label": "Caps",
+    "bag.cap.hint": "Step back for reach, step in for a tight line that bites",
+    "bag.tool.label": "Tools",
+    "bag.tool.hint": "Held against the wall — same mark whatever your range",
+
+    "cap.circle.label": "Circle",
+    "cap.circle.hint": "The everyday cap",
+    "cap.square.label": "Square",
+    "cap.square.hint": "Blocky, hard corners",
+    "cap.flare.label": "Flare",
+    "cap.flare.hint": "Wide, soft, low pressure",
+    "cap.calligraphy.label": "Calligraphy",
+    "cap.calligraphy.hint": "Angled edge, thick and thin",
+    "cap.marker.label": "Marker",
+    "cap.marker.hint": "Flat chisel, sharp and opaque",
+    "cap.roller.label": "Roller",
+    "cap.roller.hint": "Covers ground fast",
+
+    "hint.backpack": "to open the backpack",
+    "hint.photo": "take a photo",
+
+    "controls.moving.title": "Getting around",
+    "controls.walk.key": "WASD / arrows",
+    "controls.walk.action": "Walk",
+    "controls.look.key": "Mouse",
+    "controls.look.action": "Look",
+    "controls.shift.key": "Shift",
+    "controls.shift.action": "Run on foot, sink in free flight",
+    "controls.space.key": "Space",
+    "controls.space.action": "Jump on foot, rise in free flight",
+    "controls.crouch.key": "Ctrl",
+    "controls.crouch.action": "Crouch",
+
+    "controls.painting.title": "Painting",
+    "controls.spray.key": "Left click",
+    "controls.spray.action": "Hold to spray",
+    "controls.colour.key": "Wheel",
+    "controls.colour.action": "Change colour",
+    "controls.size.key": "Alt + wheel",
+    "controls.size.action": "Spray size",
+    "controls.palette.key": "1 – 0",
+    "controls.palette.action": "Pick a colour straight away",
+    "controls.bag.key": "I",
+    "controls.bag.action": "Open the backpack and swap caps",
+    "controls.photo.key": "P",
+    "controls.photo.action": "Take a photo of the wall",
+    "controls.undo.key": "Ctrl / Cmd + Z",
+    "controls.undo.action": "Undo your last stroke",
+    "controls.pause.key": "Esc",
+    "controls.pause.action": "Pause",
+
+    "controls.knowing.title": "Worth knowing",
+    "controls.near.key": "Step in",
+    "controls.near.action": "The cone tightens to a 1 cm line that bites fast",
+    "controls.far.key": "Back off",
+    "controls.far.action": "It opens up to 30 cm, but the paint goes on thin",
+    "controls.hold.key": "Hold still",
+    "controls.hold.action": "The wall floods and the paint runs",
+  },
+};

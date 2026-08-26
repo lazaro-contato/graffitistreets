@@ -5,6 +5,7 @@ import {
   type Side,
   type SurfaceSpec,
 } from "../config";
+import type { Locale } from "../i18n/strings";
 
 /**
  * Photographic wall dressing, loaded once and shared by every panel.
@@ -136,4 +137,29 @@ export async function loadRoadSurface(
     roughness: asDataMap(roughness),
     tileMeters: ROAD_SURFACE.tileMeters,
   };
+}
+
+/**
+ * The ad panels, one image per language, both loaded up front.
+ *
+ * Two files of about 35 KB. Fetching the second one only when somebody
+ * switches language would mean the sign going blank mid-game while it
+ * arrives, which is a worse trade than 35 KB.
+ */
+export async function loadAdTextures(
+  onEach: () => void = () => {},
+): Promise<Record<Locale, THREE.Texture | null>> {
+  const one = async (locale: Locale) => {
+    const image = await loadImage(`/ads/house-${locale}.jpg`);
+    onEach();
+    if (!image) return null;
+    const texture = new THREE.Texture(image);
+    texture.colorSpace = THREE.SRGBColorSpace; // it carries colour, not data
+    texture.anisotropy = 4;
+    texture.needsUpdate = true;
+    return texture;
+  };
+
+  const [pt, en] = await Promise.all([one("pt"), one("en")]);
+  return { pt, en };
 }

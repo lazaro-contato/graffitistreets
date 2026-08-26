@@ -61,3 +61,11 @@ function buildPath(cap: CapDefinition): string {
 export const CAP_PATHS = Object.fromEntries(
   CAPS.map((cap) => [cap.id, buildPath(cap)]),
 ) as Record<CapId, string>;
+
+/**
+ * The pointer, for when the crosshair is over something clickable. Drawn to
+ * the same 50-unit reach as the cap outlines, so the cursor element can be
+ * sized by exactly the same code path.
+ */
+export const POINTER_PATH =
+  "M -18,-50 L -18,26 L -2,12 L 8,40 L 20,35 L 10,9 L 30,7 Z";

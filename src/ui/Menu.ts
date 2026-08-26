@@ -1,4 +1,6 @@
 import { MOVEMENT_MODES, type MovementMode } from "../config";
+import { LOCALES, type Locale } from "../i18n/strings";
+import { t, getLocale, setLocale } from "../i18n/i18n";
 
 export type MenuScreen = "main" | "modes" | "controls" | "pause";
 
@@ -11,40 +13,19 @@ export type MenuHandlers = {
   onQuit: () => void;
 };
 
-type ControlRow = { keys: string; action: string };
-type ControlGroup = { title: string; rows: ControlRow[] };
-
-/** Kept here rather than in config: this is UI copy, not tuning. */
-const CONTROLS: ControlGroup[] = [
+/** Keys, not words: the sheet is rewritten in place when the language changes. */
+const CONTROLS: { title: string; rows: string[] }[] = [
   {
-    title: "Movimentação",
-    rows: [
-      { keys: "WASD / setas", action: "Andar" },
-      { keys: "Mouse", action: "Olhar" },
-      { keys: "Shift", action: "Corre a pé, desce no voo livre" },
-      { keys: "Espaço", action: "Pula a pé, sobe no voo livre" },
-      { keys: "Ctrl", action: "Agachar" },
-    ],
+    title: "controls.moving.title",
+    rows: ["walk", "look", "shift", "space", "crouch"],
   },
   {
-    title: "Pintura",
-    rows: [
-      { keys: "Clique esquerdo", action: "Segure para pintar" },
-      { keys: "Scroll", action: "Trocar de cor" },
-      { keys: "Alt + scroll", action: "Tamanho do spray" },
-      { keys: "1 – 0", action: "Escolher uma cor direto" },
-      { keys: "I", action: "Abrir a mochila e trocar de cap" },
-      { keys: "Ctrl / Cmd + Z", action: "Desfazer o último traço" },
-      { keys: "Esc", action: "Pausar" },
-    ],
+    title: "controls.painting.title",
+    rows: ["spray", "colour", "size", "palette", "bag", "photo", "undo", "pause"],
   },
   {
-    title: "Vale saber",
-    rows: [
-      { keys: "Chegue perto", action: "O jato fecha até 1 cm e pega rápido" },
-      { keys: "Afaste-se", action: "Abre até 30 cm, mas a tinta sai fraca" },
-      { keys: "Fique parado", action: "O muro satura e a tinta escorre" },
-    ],
+    title: "controls.knowing.title",
+    rows: ["near", "far", "hold"],
   },
 ];
 
@@ -89,6 +70,7 @@ export class Menu {
     this.root.style.setProperty("--menu-art", `url("${MENU_ART}")`);
 
     this.buildModeChoices();
+    this.buildLanguageChoices();
     this.buildControls();
 
     this.root.addEventListener("click", (e) => {
@@ -117,7 +99,10 @@ export class Menu {
       button.type = "button";
       button.className = "mode-card";
       button.innerHTML =
-        `<strong>${option.label}</strong><span>${option.hint}</span>`;
+        `<strong data-i18n="mode.${option.id}.label">` +
+        `${t(`mode.${option.id}.label`)}</strong>` +
+        `<span data-i18n="mode.${option.id}.hint">` +
+        `${t(`mode.${option.id}.hint`)}</span>`;
       button.addEventListener("click", () => this.pick(option.id));
       this.modeButtons.set(option.id, button);
       host.appendChild(button);
@@ -139,6 +124,37 @@ export class Menu {
     }
   }
 
+  /**
+   * The language picker. Its own labels are the language names themselves, so
+   * they are never translated — "Português" reads as Português in English too,
+   * and a picker written in a language you cannot read is no use.
+   */
+  private buildLanguageChoices() {
+    const host = this.root.querySelector("#language-choices")!;
+    const buttons = new Map<Locale, HTMLButtonElement>();
+
+    const sync = () => {
+      for (const [id, button] of buttons) {
+        button.setAttribute("aria-pressed", String(id === getLocale()));
+      }
+    };
+
+    for (const option of LOCALES) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "pill";
+      button.textContent = option.label;
+      button.addEventListener("click", () => {
+        setLocale(option.id);
+        sync();
+      });
+      buttons.set(option.id, button);
+      host.appendChild(button);
+    }
+
+    sync();
+  }
+
   private buildControls() {
     const host = this.root.querySelector("#control-list")!;
 
@@ -146,13 +162,18 @@ export class Menu {
       const section = document.createElement("section");
       section.className = "control-group";
       section.innerHTML =
-        `<p class="control-title">${group.title}</p>` +
+        `<p class="control-title" data-i18n="${group.title}">` +
+        `${t(group.title)}</p>` +
         group.rows
-          .map(
-            (row) =>
-              `<p class="control-row"><kbd>${row.keys}</kbd>` +
-              `<span>${row.action}</span></p>`,
-          )
+          .map((row) => {
+            const key = `controls.${row}.key`;
+            const action = `controls.${row}.action`;
+            return (
+              `<p class="control-row">` +
+              `<kbd data-i18n="${key}">${t(key)}</kbd>` +
+              `<span data-i18n="${action}">${t(action)}</span></p>`
+            );
+          })
           .join("");
       host.appendChild(section);
     }

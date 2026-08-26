@@ -3,7 +3,7 @@ import type { SprayCan } from "../paint/SprayCan";
 import type { Aim } from "../paint/Aim";
 import type { PaintSystem } from "../paint/PaintSystem";
 import { capExtent } from "../paint/CapGeometry";
-import { CAP_PATHS } from "./CapIcons";
+import { CAP_PATHS, POINTER_PATH } from "./CapIcons";
 import { CAP_BY_ID, type CapId } from "../config";
 
 const DEG_TO_RAD = Math.PI / 180;
@@ -26,6 +26,7 @@ export class SprayCursor {
   private lastOpacity = -1;
   private lastCap: CapId | null = null;
   private lastTwist = 0;
+  private lastPointer = false;
 
   constructor(
     private camera: THREE.PerspectiveCamera,
@@ -40,8 +41,27 @@ export class SprayCursor {
   }
 
   update() {
-    const { paintable, distance } = this.aim.current;
+    const { paintable, distance, link } = this.aim.current;
     const cap = this.can.cap;
+
+    // Over a sign the crosshair stops describing paint and starts describing a
+    // click, so it drops the cap outline entirely and becomes a pointer.
+    const pointing = link !== null;
+    if (pointing !== this.lastPointer) {
+      this.element.dataset.pointer = pointing ? "on" : "off";
+      this.lastPointer = pointing;
+      this.lastCap = null; // force the path to be rewritten below
+      this.lastSize = -1;
+    }
+
+    if (pointing) {
+      for (const path of this.paths) path.setAttribute("d", POINTER_PATH);
+      this.element.style.width = "34px";
+      this.element.style.height = "34px";
+      this.element.style.opacity = "1";
+      this.lastOpacity = 1;
+      return;
+    }
 
     let extentPx = IDLE_EXTENT_PX;
     let opacity = IDLE_OPACITY;

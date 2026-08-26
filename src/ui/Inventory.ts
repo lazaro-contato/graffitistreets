@@ -1,4 +1,5 @@
 import { CAP_CATEGORIES, capsIn, type CapId } from "../config";
+import { t } from "../i18n/i18n";
 import { CAP_PATHS } from "./CapIcons";
 import type { SprayCan } from "../paint/SprayCan";
 
@@ -28,9 +29,13 @@ export class Inventory {
     for (const category of CAP_CATEGORIES) {
       const pocket = document.createElement("section");
       pocket.className = "pocket";
+      // The keys ride on the markup, so switching language is one pass over
+      // the DOM rather than rebuilding every slot.
       pocket.innerHTML =
-        `<p class="pocket-label">${category.label}</p>` +
-        `<p class="pocket-hint">${category.hint}</p>`;
+        `<p class="pocket-label" data-i18n="bag.${category.id}.label">` +
+        `${t(`bag.${category.id}.label`)}</p>` +
+        `<p class="pocket-hint" data-i18n="bag.${category.id}.hint">` +
+        `${t(`bag.${category.id}.hint`)}</p>`;
 
       const slots = document.createElement("div");
       slots.className = "slots";
@@ -44,8 +49,10 @@ export class Inventory {
           `<svg viewBox="-62 -62 124 124" aria-hidden="true">` +
           `<path d="${CAP_PATHS[cap.id]}" /></svg>` +
           `</span>` +
-          `<span class="cap-name">${cap.label}</span>` +
-          `<span class="cap-hint">${cap.hint}</span>`;
+          `<span class="cap-name" data-i18n="cap.${cap.id}.label">` +
+          `${t(`cap.${cap.id}.label`)}</span>` +
+          `<span class="cap-hint" data-i18n="cap.${cap.id}.hint">` +
+          `${t(`cap.${cap.id}.hint`)}</span>`;
         slot.addEventListener("click", () => this.pick(cap.id));
         this.slots.set(cap.id, slot);
         slots.appendChild(slot);

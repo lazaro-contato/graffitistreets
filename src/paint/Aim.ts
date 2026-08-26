@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { SPRAY, PANELS_PER_SIDE } from "../config";
+import { SPRAY, ADS, PANELS_PER_SIDE } from "../config";
 import type { WallSystem } from "../world/WallSystem";
 import type { WallPanel } from "../world/WallPanel";
 
@@ -13,6 +13,8 @@ export type AimResult = {
   tooClose: boolean;
   /** hit && !tooClose: spraying right now would actually mark the wall. */
   paintable: boolean;
+  /** Set when the crosshair is on something meant to be clicked, not painted. */
+  link: string | null;
   distance: number;
   panel: WallPanel | null;
   u: number; // strip coordinate, 0..1 along the whole wall
@@ -31,6 +33,7 @@ export class Aim {
     hit: false,
     tooClose: false,
     paintable: false,
+    link: null,
     distance: 0,
     panel: null,
     u: 0,
@@ -39,13 +42,18 @@ export class Aim {
 
   private raycaster = new THREE.Raycaster();
 
+  private targets: THREE.Object3D[];
+
   constructor(
     private camera: THREE.Camera,
     private walls: WallSystem,
+    clickable: THREE.Object3D[] = [],
   ) {
-    // Capping the ray distance both prevents painting from across the street
-    // and cuts the raycast cost.
-    this.raycaster.far = SPRAY.MAX_DISTANCE;
+    // One ray for both jobs, reaching as far as the furthest of them. The
+    // spray's own two-metre limit is applied below instead of by the ray,
+    // because a sign has to be clickable from across the alley.
+    this.raycaster.far = Math.max(SPRAY.MAX_DISTANCE, ADS.CLICK_RANGE);
+    this.targets = [...this.walls.meshes, ...clickable];
   }
 
   update() {
@@ -53,15 +61,29 @@ export class Aim {
     result.hit = false;
     result.tooClose = false;
     result.paintable = false;
+    result.link = null;
     result.panel = null;
 
     this.raycaster.setFromCamera(SCREEN_CENTER, this.camera);
-    const hits = this.raycaster.intersectObjects(this.walls.meshes, false);
+    const hits = this.raycaster.intersectObjects(this.targets, false);
     if (hits.length === 0) return;
 
     const hit = hits[0];
+
+    // Nearest wins, so standing in front of a sign means pointing at the sign
+    // even though the wall behind it is also on the ray.
+    const link = hit.object.userData.link as string | undefined;
+    if (link) {
+      result.link = link;
+      result.distance = hit.distance;
+      return;
+    }
+
     // Geometry without a uv attribute silently returns undefined here.
     if (!hit.uv) return;
+    // The ray now reaches further than the can does, so the limit it used to
+    // enforce has to be applied here instead.
+    if (hit.distance > SPRAY.MAX_DISTANCE) return;
 
     result.hit = true;
     result.distance = hit.distance;

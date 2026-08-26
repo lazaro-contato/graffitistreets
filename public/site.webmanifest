@@ -1,0 +1,15 @@
+{
+  "name": "Graffiti Streets",
+  "short_name": "Graffiti Streets",
+  "description": "Pinte grafite em uma rua 3D direto no navegador. Escolha caps, cores e role a tinta num beco à noite. Grátis, sem instalar nada e sem cadastro.",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#000000",
+  "theme_color": "#0a0d14",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

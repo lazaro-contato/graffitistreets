@@ -1,4 +1,4 @@
-# Graffiti Center
+# Graffiti Streets
 
 Read [ARCHITECTURE.md](ARCHITECTURE.md) first — it is the general project
 context: stack, current phase, data flow, file layout, coordinate system and the

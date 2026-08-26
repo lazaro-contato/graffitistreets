@@ -3,7 +3,12 @@ import { Loop } from "./core/Loop";
 import { Input } from "./core/Input";
 import { buildStreet } from "./world/Street";
 import { WallSystem } from "./world/WallSystem";
-import { loadWallSurfaces, loadRoadSurface } from "./world/Surfaces";
+import {
+  loadWallSurfaces,
+  loadRoadSurface,
+  loadAdTextures,
+} from "./world/Surfaces";
+import { buildBillboards } from "./world/Billboard";
 import { Player } from "./player/Player";
 import { SprayCan } from "./paint/SprayCan";
 import { Aim } from "./paint/Aim";
@@ -16,13 +21,22 @@ import { SprayCursor } from "./ui/SprayCursor";
 import { Inventory } from "./ui/Inventory";
 import { Menu, MENU_ART, type MenuScreen } from "./ui/Menu";
 import { LoadingScreen } from "./ui/Loading";
+import { buildPhoto } from "./ui/Photo";
+import { BackpackHint } from "./ui/Hint";
+import { Session } from "./telemetry/Session";
+import {
+  apply as applyLocale,
+  getLocale,
+  onLocaleChange,
+} from "./i18n/i18n";
+import { ADS } from "./config";
 
 const canvas = document.getElementById("app") as HTMLCanvasElement;
 const hud = document.getElementById("hud")!;
-// Thirteen counted steps: six wall files, three road files, the world itself,
-// the menu artwork, the shark and the display face. Counted rather than
-// estimated, so the bar tells the truth.
-const loading = new LoadingScreen(13);
+// Fifteen counted steps: six wall files, three road files, two ad panels, the
+// world itself, the menu artwork, the shark and the display face. Counted
+// rather than estimated, so the bar tells the truth.
+const loading = new LoadingScreen(15);
 
 const engine = new Engine(canvas);
 const loop = new Loop();
@@ -50,7 +64,15 @@ const transport = new LocalTransport();
 // authorId into single player code means an optional field in thirty places.
 const authorId = crypto.randomUUID();
 
-const aim = new Aim(engine.camera, walls);
+const billboards = buildBillboards(
+  engine.scene,
+  await loadAdTextures(() => loading.advance()),
+  ADS.HOUSE_LINK,
+);
+billboards.setLocale(getLocale());
+onLocaleChange(() => billboards.setLocale(getLocale()));
+
+const aim = new Aim(engine.camera, walls, billboards.meshes);
 const drips = new DripSystem(transport, authorId);
 const paint = new PaintSystem(aim, can, transport, drips, authorId);
 const cursor = new SprayCursor(engine.camera, can, aim, paint);
@@ -68,11 +90,21 @@ transport.onMessage((message) => {
       store.clearSide(message.side);
       break;
     case "stroke:end":
+      // One per finished spray or paint run, so it is the honest count of
+      // marks left on the wall.
+      session.countMark();
       break;
   }
 });
 
 buildHud(can, () => player.controls.isLocked);
+
+// Times the visit and queues the result in localStorage. Nothing is posted
+// anywhere yet — the queue is drained once there is a server to drain it to.
+const session = new Session();
+
+// P takes a photo. The same PNG is what the gallery will submit later.
+buildPhoto(engine, () => player.controls.isLocked);
 
 // Everything below is one state machine with four states: playing, the menu
 // (main / pause / controls), and the backpack. Only "playing" holds pointer
@@ -89,6 +121,7 @@ const menu = new Menu({
 });
 
 const inventory = new Inventory(can, () => closeBackpack());
+const hint = new BackpackHint();
 
 /**
  * Asks for the pointer back.
@@ -112,6 +145,7 @@ function enterStreet(refuge: MenuScreen) {
 
 function openBackpack() {
   if (inventory.isOpen) return;
+  hint.dismiss();
   inventory.open();
   hud.hidden = true;
   player.controls.unlock();
@@ -134,6 +168,15 @@ player.controls.addEventListener("unlock", () => {
   // means the player stepped away, so pause. Unless we let go of it ourselves
   // to open the backpack, or a menu screen is already up.
   if (!inventory.isOpen && !menu.isOpen) menu.show("pause");
+});
+
+// Opening a tab drops pointer lock, which is what anyone clicking a link
+// expects. noopener keeps the new tab from reaching back into this one.
+canvas.addEventListener("click", () => {
+  const link = aim.current.link;
+  if (link && player.controls.isLocked) {
+    window.open(link, "_blank", "noopener,noreferrer");
+  }
 });
 
 window.addEventListener("keydown", (e) => {
@@ -187,6 +230,8 @@ async function waitForFrontDoor() {
 }
 
 await waitForFrontDoor();
+// Fills every data-i18n element, sets <html lang> and the document title.
+applyLocale();
 menu.show("main");
 await loading.finish();
 
@@ -194,9 +239,15 @@ await loading.finish();
 // paint so both the spray and the cursor act on the same frame's raycast, and
 // flushing after all paint logic keeps it to one texture upload per panel.
 loop.add((dt) => {
+  session.update(player.controls.isLocked);
   player.update(dt);
   aim.update();
-  paint.update(input.isPainting && player.controls.isLocked, dt);
+  // Pointing at a sign is not painting, so the trigger does nothing to the
+  // wall behind it.
+  paint.update(
+    input.isPainting && player.controls.isLocked && !aim.current.link,
+    dt,
+  );
   // After paint, so a run spawned this frame lays its first point immediately.
   drips.update(dt);
   cursor.update();

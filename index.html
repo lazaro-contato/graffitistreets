@@ -1,12 +1,86 @@
 <!doctype html>
-<html lang="en">
+<!-- lang matters for search: the interface is Portuguese, and declaring en
+     tells crawlers to rank this against English queries it cannot serve. -->
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, user-scalable=no"
     />
-    <title>Graffiti Center</title>
+
+    <title>Graffiti Streets</title>
+    <meta
+      name="description"
+      content="Pinte grafite em uma rua 3D direto no navegador. Escolha caps, cores e role a tinta num beco à noite. Grátis, sem instalar nada e sem cadastro."
+    />
+    <link rel="canonical" href="https://graffitistreets.vercel.app/" />
+    <meta name="theme-color" content="#0a0d14" />
+    <meta name="color-scheme" content="dark" />
+
+    <!-- There is deliberately no <meta name="keywords">: search engines have
+         ignored it since 2009. What ranks is the title, the heading and the
+         copy people actually read. -->
+
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Graffiti Streets" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:url" content="https://graffitistreets.vercel.app/" />
+    <meta property="og:title" content="Graffiti Streets" />
+    <meta
+      property="og:description"
+      content="Pinte grafite em uma rua 3D direto no navegador. Escolha caps, cores e role a tinta num beco à noite. Grátis, sem instalar nada e sem cadastro."
+    />
+    <meta
+      property="og:image"
+      content="https://graffitistreets.vercel.app/og.jpg"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="O logo Graffiti Streets pintado sobre um muro de beco à noite"
+    />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Graffiti Streets — grafite 3D online" />
+    <meta
+      name="twitter:description"
+      content="Pinte grafite em uma rua 3D direto no navegador. Escolha caps, cores e role a tinta num beco à noite. Grátis, sem instalar nada e sem cadastro."
+    />
+    <meta
+      name="twitter:image"
+      content="https://graffitistreets.vercel.app/og.jpg"
+    />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "VideoGame",
+        "name": "Graffiti Streets",
+        "url": "https://graffitistreets.vercel.app/",
+        "image": "https://graffitistreets.vercel.app/og.jpg",
+        "description": "Pinte grafite em uma rua 3D direto no navegador. Escolha caps, cores e role a tinta num beco à noite. Grátis, sem instalar nada e sem cadastro.",
+        "inLanguage": "pt-BR",
+        "applicationCategory": "GameApplication",
+        "gamePlatform": "Navegador",
+        "operatingSystem": "Windows, macOS, Linux, Android, iOS",
+        "playMode": "SinglePlayer",
+        "genre": ["Arte", "Sandbox", "Casual"],
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "BRL",
+          "availability": "https://schema.org/InStock"
+        }
+      }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -18,6 +92,8 @@
   <body>
     <canvas id="app"></canvas>
 
+    <div id="flash"></div>
+
     <div id="loading">
       <img src="/main-loading.webp" alt="" />
       <div id="loading-track"><div id="loading-bar"></div></div>
@@ -28,41 +104,82 @@
 
       <div class="panel">
         <section class="screen" data-screen="main">
-          <h1>Graffiti Center</h1>
-          <p class="kicker">// pegue sua lata</p>
-          <button class="menu-item" data-action="play" type="button">
+          <h1>Graffiti Streets</h1>
+  
+          <p class="kicker" data-i18n="menu.kicker.main">// pegue sua lata</p>
+          <button
+            class="menu-item"
+            data-action="play"
+            type="button"
+            data-i18n="menu.play"
+          >
             Jogar
           </button>
-          <button class="menu-item" data-action="controls" type="button">
+          <button
+            class="menu-item"
+            data-action="controls"
+            type="button"
+            data-i18n="menu.controls"
+          >
             Controles
           </button>
+
+          <p class="kicker" data-i18n="menu.kicker.language">// idioma</p>
+          <div class="pill-row" id="language-choices"></div>
         </section>
 
         <section class="screen" data-screen="modes" hidden>
-          <p class="kicker">// como você vai andar</p>
+          <p class="kicker" data-i18n="menu.kicker.modes">
+            // como você vai andar
+          </p>
           <div class="mode-cards" id="mode-choices"></div>
-          <button class="menu-link" data-action="back" type="button">
+          <button
+            class="menu-link"
+            data-action="back"
+            type="button"
+            data-i18n="menu.back"
+          >
             Voltar
           </button>
         </section>
 
         <section class="screen" data-screen="pause" hidden>
-          <h2>Pausado</h2>
-          <button class="menu-item" data-action="resume" type="button">
+          <h2 data-i18n="menu.paused">Pausado</h2>
+          <button
+            class="menu-item"
+            data-action="resume"
+            type="button"
+            data-i18n="menu.resume"
+          >
             Continuar jogando
           </button>
-          <button class="menu-item ghost" data-action="controls" type="button">
+          <button
+            class="menu-item ghost"
+            data-action="controls"
+            type="button"
+            data-i18n="menu.controls"
+          >
             Controles
           </button>
-          <button class="menu-item ghost" data-action="quit" type="button">
+          <button
+            class="menu-item ghost"
+            data-action="quit"
+            type="button"
+            data-i18n="menu.quit"
+          >
             Sair
           </button>
         </section>
 
         <section class="screen" data-screen="controls" hidden>
-          <h2>Controles</h2>
+          <h2 data-i18n="menu.controls">Controles</h2>
           <div id="control-list"></div>
-          <button class="menu-link" data-action="back" type="button">
+          <button
+            class="menu-link"
+            data-action="back"
+            type="button"
+            data-i18n="menu.back"
+          >
             Voltar
           </button>
         </section>
@@ -77,19 +194,31 @@
         <path class="edge" vector-effect="non-scaling-stroke" />
       </svg>
       <div id="palette"></div>
+
+      <!-- Both live inside the HUD, so they come and go with pointer lock on
+           their own, with no code to hide them in menus. -->
+      <p id="photo-tip" class="hud-chip">
+        <span class="hint-key quiet">P</span>
+        <span data-i18n="hint.photo">tirar uma foto</span>
+      </p>
+
+      <p id="hint" class="hud-chip">
+        <span class="hint-key">I</span>
+        <span data-i18n="hint.backpack">para abrir a mochila</span>
+      </p>
     </div>
 
     <div id="inventory" hidden>
       <div class="backpack">
         <div class="flap">
           <span class="buckle"></span>
-          <h2>Mochila</h2>
+          <h2 data-i18n="bag.title">Mochila</h2>
           <span class="buckle"></span>
         </div>
 
         <div id="pockets"></div>
 
-        <p class="hint">I ou Esc para fechar</p>
+        <p class="hint" data-i18n="bag.close">I ou Esc para fechar</p>
       </div>
     </div>
 

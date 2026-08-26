@@ -75,13 +75,9 @@ export const LAMP = {
  */
 export type MovementMode = "walk" | "free";
 
-export const MOVEMENT_MODES: readonly {
-  id: MovementMode;
-  label: string;
-  hint: string;
-}[] = [
-  { id: "walk", label: "A pé", hint: "Shift corre, espaço pula" },
-  { id: "free", label: "Voo livre", hint: "Espaço sobe, shift desce" },
+export const MOVEMENT_MODES: readonly { id: MovementMode }[] = [
+  { id: "walk" },
+  { id: "free" },
 ];
 
 /** Which wall of the street a surface belongs to. */
@@ -175,6 +171,41 @@ export const ROAD_OFFSET_U = 0.5;
 export const SURFACE = {
   /** Damp patches kept over the photo, so panels do not read as clones. */
   GRUNGE_ALPHA: 0.04,
+} as const;
+
+/**
+ * Photos, taken with P.
+ *
+ * The screen renders at 2x at most, because that is the right trade sixty
+ * times a second. A still is not on that budget, so it is rendered larger and
+ * read back — bounded by total pixels rather than by the multiplier, since a
+ * 4x buffer on a dense display runs past what weaker hardware can allocate.
+ */
+export const PHOTO = {
+  SUPERSAMPLE: 2,
+  MAX_LONG_EDGE: 3840,
+} as const;
+
+/**
+ * Backlit ad panels, mounted on the blocks that cap each end of the alley —
+ * the only surface at eye height that is not somebody's canvas.
+ *
+ * They are the one thing in the scene you point at rather than paint, so the
+ * range you can click from is deliberately not the range you can spray from:
+ * two metres is right for a can and useless for a sign you are meant to read.
+ */
+export const ADS = {
+  WIDTH: 3,
+  HEIGHT: 1.5,
+  CENTRE_Y: 1.9, // a little above eye line, the way signage sits
+  PROUD: 0.06, // how far the lit face stands off the block behind it
+  CLICK_RANGE: 14, // metres; the alley is 12 long, so the whole of it
+
+  GLOW_COLOR: "#dCeaff",
+  GLOW_INTENSITY: 9, // candela of spill, so the box lights its own patch of wall
+
+  /** Replace with the advertiser's URL once one exists. */
+  HOUSE_LINK: "https://example.com/anuncie",
 } as const;
 
 /** Canvas size of one panel, in pixels. */
@@ -310,22 +341,9 @@ export type CapShape = "ellipse" | "rect" | "triangle";
  */
 export type CapCategory = "cap" | "tool";
 
-export const CAP_CATEGORIES: readonly {
-  id: CapCategory;
-  label: string;
-  hint: string;
-}[] = [
-  {
-    id: "cap",
-    // "Cap" stays in English: it is the word the graffiti world uses.
-    label: "Caps",
-    hint: "Afaste-se para alcançar mais, chegue perto para um traço fino e forte",
-  },
-  {
-    id: "tool",
-    label: "Ferramentas",
-    hint: "Encostados no muro — a mesma marca em qualquer distância",
-  },
+export const CAP_CATEGORIES: readonly { id: CapCategory }[] = [
+  { id: "cap" },
+  { id: "tool" },
 ];
 
 export type CapId =
@@ -339,8 +357,6 @@ export type CapId =
 export type CapDefinition = {
   id: CapId;
   category: CapCategory;
-  label: string;
-  hint: string;
   shape: CapShape;
   /** Width divided by height of the footprint. 1 is unstretched. */
   aspect: number;
@@ -368,8 +384,6 @@ export const CAPS: readonly CapDefinition[] = [
   {
     id: "circle",
     category: "cap",
-    label: "Redondo",
-    hint: "O cap do dia a dia",
     shape: "ellipse",
     aspect: 1,
     angle: 0,
@@ -382,8 +396,6 @@ export const CAPS: readonly CapDefinition[] = [
   {
     id: "square",
     category: "cap",
-    label: "Quadrado",
-    hint: "Chapado, cantos duros",
     shape: "rect",
     aspect: 1,
     angle: 0,
@@ -396,9 +408,6 @@ export const CAPS: readonly CapDefinition[] = [
   {
     id: "flare",
     category: "cap",
-    // Another graffiti term left alone, like "cap".
-    label: "Flare",
-    hint: "Largo, suave, baixa pressão",
     shape: "ellipse",
     aspect: 1,
     angle: 0,
@@ -411,8 +420,6 @@ export const CAPS: readonly CapDefinition[] = [
   {
     id: "calligraphy",
     category: "tool",
-    label: "Caligrafia",
-    hint: "Ponta inclinada, grosso e fino",
     shape: "rect",
     aspect: 3.2,
     angle: -45,
@@ -425,8 +432,6 @@ export const CAPS: readonly CapDefinition[] = [
   {
     id: "marker",
     category: "tool",
-    label: "Marcador",
-    hint: "Ponta chanfrada, nítida e opaca",
     shape: "rect",
     aspect: 3.6,
     angle: 0,
@@ -439,8 +444,6 @@ export const CAPS: readonly CapDefinition[] = [
   {
     id: "roller",
     category: "tool",
-    label: "Rolo",
-    hint: "Cobre área rápido",
     shape: "rect",
     aspect: 4.2,
     angle: 0,

@@ -1,4 +1,4 @@
-# Graffiti Center — Project Context
+# Graffiti Streets — Project Context
 
 A 3D city in the browser. You walk down a street in first person, pick a color,
 and spray paint the walls. Paint builds up gradually — close to the wall it lands

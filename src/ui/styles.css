@@ -25,6 +25,30 @@ body {
   --neon: #39ff14;
 }
 
+/* Shutter flash for a photo. Sits above the canvas but under every panel, and
+   is inert until the class goes on. */
+#flash {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#flash.firing {
+  animation: shutter 0.32s ease-out;
+}
+
+@keyframes shutter {
+  0% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 /* Shown by the markup, so it paints before the module script runs and starts
    building wall panels. The sway is a transform, which stays on the compositor
    and keeps moving even while the main thread is blocked doing that work. */
@@ -107,6 +131,68 @@ body {
     0 0 0.75rem rgba(57, 255, 20, 0.85),
     0 0 2rem rgba(57, 255, 20, 0.45);
   transition: width 0.3s ease;
+}
+
+/* Two corner chips on the HUD. Both sit inside #hud, so pointer lock shows
+   and hides them without any code being involved. */
+.hud-chip {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.85rem 0.5rem 0.55rem;
+  border-radius: 0.5rem;
+  background: rgba(10, 12, 16, 0.72);
+  backdrop-filter: blur(6px);
+  color: #f2f2f2;
+  font-size: 0.82rem;
+  pointer-events: none;
+}
+
+/* A reminder, not a nudge: it stays for as long as you play, so it is quiet
+   and it does not blink. Two blinking corners would fight each other. */
+#photo-tip {
+  top: 1.5rem;
+  right: 1.5rem;
+  opacity: 0.5;
+}
+
+/* A one-off nudge towards the backpack, opposite the palette. It blinks
+   because it is asking for something, and it leaves once it has been heard. */
+#hint {
+  right: 1.5rem;
+  bottom: 1.5rem;
+  animation: nudge 1.7s ease-in-out infinite;
+}
+
+.hint-key {
+  display: grid;
+  place-items: center;
+  min-width: 1.5rem;
+  padding: 0.1rem 0.3rem;
+  border: 2px solid #ffd400;
+  border-radius: 0.3rem;
+  color: #ffd400;
+  font-family: var(--display);
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+/* Neutral, so the yellow stays the colour of "do this now" */
+.hint-key.quiet {
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #f2f2f2;
+}
+
+/* Never all the way out: a hint that vanishes reads as a glitch */
+@keyframes nudge {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.38;
+  }
 }
 
 /* Menu: a column of plain text down the right edge, no panel, with the street
@@ -210,6 +296,16 @@ body {
   opacity: 0.55;
 }
 
+/* Real, visible copy — the page is a canvas, so what little text it has is
+   what a crawler gets to read. */
+.tagline {
+  max-width: 22rem;
+  margin-bottom: 0.9rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  opacity: 0.62;
+}
+
 .kicker {
   margin-bottom: 0.7rem;
   font-size: 0.7rem;
@@ -238,6 +334,41 @@ body {
 .menu-item:hover {
   color: var(--neon);
   transform: translateX(0.3rem);
+}
+
+/* A plain segmented pair, deliberately flatter than the mode cards: these
+   only set something, they do not start the game. */
+.pill-row {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.15rem 0 0.2rem;
+}
+
+.pill {
+  padding: 0.35rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: none;
+  color: inherit;
+  font-family: var(--display);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    border-color 0.12s ease,
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.pill:hover {
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.pill[aria-pressed="true"] {
+  border-color: var(--neon);
+  background: var(--neon);
+  color: #0a0c10;
 }
 
 /* Mode cards: the play button, split in two. Picking one sets how you move
@@ -372,6 +503,15 @@ body {
 
 #crosshair path {
   fill: none;
+}
+
+/* A pointer reads as a solid shape, not an outline */
+#crosshair[data-pointer="on"] .edge {
+  fill: #ffffff;
+}
+
+#crosshair[data-pointer="on"] .backing {
+  fill: rgba(0, 0, 0, 0.55);
 }
 
 #crosshair .backing {
