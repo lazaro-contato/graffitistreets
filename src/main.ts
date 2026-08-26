@@ -19,9 +19,10 @@ import { LoadingScreen } from "./ui/Loading";
 
 const canvas = document.getElementById("app") as HTMLCanvasElement;
 const hud = document.getElementById("hud")!;
-// Six counted steps: three wall files, the world itself, the menu artwork and
-// the display face. Counted rather than estimated, so the bar tells the truth.
-const loading = new LoadingScreen(6);
+// Seven counted steps: three wall files, the world itself, the menu artwork,
+// the shark and the display face. Counted rather than estimated, so the bar
+// tells the truth.
+const loading = new LoadingScreen(7);
 
 const engine = new Engine(canvas);
 const loop = new Loop();
@@ -168,12 +169,17 @@ async function waitForFrontDoor() {
   const art = new Image();
   art.src = MENU_ART;
 
+  // Already in the markup, so this waits on the fetch the browser started for
+  // itself rather than asking for the file twice.
+  const shark = document.getElementById("menu-shark") as HTMLImageElement;
+
   const counted = (pending: Promise<unknown>) =>
     pending.finally(() => loading.advance());
 
   await Promise.race([
     Promise.allSettled([
       counted(art.decode()),
+      counted(shark.decode()),
       counted(document.fonts.load('1rem "Aldrich"')),
     ]),
     new Promise((resolve) => window.setTimeout(resolve, 6000)),

@@ -69,23 +69,24 @@ body {
 }
 
 #loading img {
-  /* The sticker is trimmed to its own bounds and portrait, so it is bounded on
-     both axes — a fixed width alone would run off a short viewport. */
-  max-width: min(20rem, 60vw);
-  max-height: 62vh;
-  /* Pinned near the top, so it swings like something hanging rather than
-     spinning around its middle. */
-  transform-origin: 50% 12%;
-  animation: sway 2.6s ease-in-out infinite;
+  /* Trimmed to its own bounds, so it is bounded on both axes — a fixed width
+     alone would run off a short viewport. */
+  max-width: min(30rem, 74vw);
+  max-height: 56vh;
+  /* The nail is drawn into the artwork, so the sign has to swing on it and not
+     on some guessed point. Measured off the image: the head of the nail sits
+     55.6% across and 9% down, once the transparent margin is trimmed. */
+  transform-origin: 55.6% 9%;
+  animation: sway 2.8s ease-in-out infinite;
 }
 
 @keyframes sway {
   0%,
   100% {
-    transform: rotate(-4deg);
+    transform: rotate(-5deg);
   }
   50% {
-    transform: rotate(4deg);
+    transform: rotate(5deg);
   }
 }
 
@@ -138,6 +139,32 @@ body {
     ),
     linear-gradient(90deg, rgba(6, 8, 11, 0.62) 0%, rgba(6, 8, 11, 0) 42%),
     var(--menu-art) center / cover no-repeat;
+}
+
+/* Hangs off the right, opposite the list in the bottom-left corner, drifting
+   rather than swinging — nothing is holding it up. */
+#menu-shark {
+  position: absolute;
+  right: clamp(0.5rem, 5vw, 5rem);
+  bottom: 10vh;
+  width: min(24rem, 34vw);
+  pointer-events: none;
+  animation: drift 6s ease-in-out infinite;
+}
+
+/* It belongs to the front door, not to a pause or the key list */
+#menu:not([data-screen="main"]) #menu-shark {
+  display: none;
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-1.4rem) rotate(2deg);
+  }
 }
 
 #menu .panel {
