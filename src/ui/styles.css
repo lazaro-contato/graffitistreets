@@ -43,6 +43,31 @@ body {
   pointer-events: none;
 }
 
+/* The backdrop is two layers so blur and darkness stay independent: the photo
+   blurs, the scrim does not. Overscanned past the frame because blurring an
+   element fades its own edges, which would show as a soft border otherwise. */
+#loading::before {
+  content: "";
+  position: absolute;
+  inset: -4rem;
+  background: url("/loading-bg.jpg") center / cover no-repeat;
+  filter: blur(5px);
+  z-index: -2;
+}
+
+/* Lighter in the middle, where the sticker sits, deepening towards the edges */
+#loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(4, 6, 9, 0.5) 0%,
+    rgba(4, 6, 9, 0.88) 100%
+  );
+  z-index: -1;
+}
+
 #loading img {
   /* The sticker is trimmed to its own bounds and portrait, so it is bounded on
      both axes — a fixed width alone would run off a short viewport. */
@@ -111,11 +136,7 @@ body {
       rgba(6, 8, 11, 0.62) 26%,
       rgba(6, 8, 11, 0) 56%
     ),
-    linear-gradient(
-      90deg,
-      rgba(6, 8, 11, 0.62) 0%,
-      rgba(6, 8, 11, 0) 42%
-    ),
+    linear-gradient(90deg, rgba(6, 8, 11, 0.62) 0%, rgba(6, 8, 11, 0) 42%),
     var(--menu-art) center / cover no-repeat;
 }
 
@@ -383,8 +404,7 @@ body {
   width: min(46rem, 100%);
   border-radius: 1.6rem;
   /* Worn canvas, lit from above */
-  background:
-    linear-gradient(180deg, #43403a 0%, #35322d 42%, #2b2925 100%);
+  background: linear-gradient(180deg, #43403a 0%, #35322d 42%, #2b2925 100%);
   box-shadow:
     0 1.5rem 3rem rgba(0, 0, 0, 0.55),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
