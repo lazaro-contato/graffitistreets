@@ -1,4 +1,4 @@
-import { SPRAY, DRIP, WORLD } from "../config";
+import { SPRAY, DRIP, WORLD, CAP_BY_ID } from "../config";
 import { SprayCan } from "./SprayCan";
 import type { Aim, AimResult } from "./Aim";
 import type { DripSystem } from "./DripSystem";
@@ -8,6 +8,11 @@ import type { Side } from "../config";
 
 const SAMPLE_INTERVAL = 1 / SPRAY.SAMPLE_HZ;
 
+/** Wraps an angle to (-PI, PI], so a turn is always the short way round. */
+function wrapAngle(radians: number) {
+  return Math.atan2(Math.sin(radians), Math.cos(radians));
+}
+
 /**
  * The only place that builds strokes.
  * It deliberately draws nothing — it emits through the Transport.
@@ -16,6 +21,11 @@ export class PaintSystem {
   private activeStroke: Stroke | null = null;
   private activeSide: Side | null = null;
   private accumulator = 0;
+
+  /** Heading of the stroke's first real movement, in canvas angle terms. */
+  private twistOrigin = 0;
+  private twistAnchored = false;
+  private twist = 0;
 
   /** Where the spray has been sitting, and for how long. See trackDwell. */
   private dwellU = 0;
@@ -33,6 +43,11 @@ export class PaintSystem {
     private drips: DripSystem,
     private authorId: string,
   ) {}
+
+  /** Current cap twist, so the cursor can show the same angle it will paint. */
+  get capTwist() {
+    return this.twist;
+  }
 
   update(isPainting: boolean, dt: number) {
     if (!isPainting) {
@@ -76,6 +91,7 @@ export class PaintSystem {
       v: target.v,
       r: this.can.radiusAt(target.distance),
       a: this.can.alphaAt(target.distance),
+      w: this.trackTwist(target.u, target.v),
     };
 
     if (!this.activeStroke) {
@@ -106,6 +122,44 @@ export class PaintSystem {
       point,
       authorId: this.authorId,
     });
+  }
+
+  /**
+   * Turns the cap with the stroke.
+   *
+   * The angle is measured against the heading the stroke *started* with, not
+   * against the wall, so a cap keeps whatever grip it was laid down at: begin
+   * rolling upwards and it stays across the travel through a turn; begin
+   * sideways and it stays along it. Either way, arcing mid-stroke swings it
+   * round, and the lag is what puts it on the diagonal while it catches up.
+   *
+   * The lag is spent in travel rather than in time, because the swing comes
+   * from dragging the thing, not from holding still.
+   */
+  private trackTwist(u: number, v: number): number {
+    if (!CAP_BY_ID.get(this.can.cap)!.twists) return 0;
+
+    const prev = this.activeStroke?.points[this.activeStroke.points.length - 1];
+    if (!prev) return 0;
+
+    // Canvas angle terms: v grows up the wall, y grows down the canvas.
+    const dx = (u - prev.u) * WORLD.STREET_LENGTH;
+    const dy = -(v - prev.v) * WORLD.WALL_HEIGHT;
+    const step = Math.hypot(dx, dy);
+    if (step < SPRAY.TWIST_MIN_STEP_M) return this.twist;
+
+    const heading = Math.atan2(dy, dx);
+    if (!this.twistAnchored) {
+      this.twistOrigin = heading;
+      this.twistAnchored = true;
+      return this.twist;
+    }
+
+    const turned = wrapAngle(heading - this.twistOrigin);
+    this.twist +=
+      wrapAngle(turned - this.twist) *
+      (1 - Math.exp(-step / SPRAY.TWIST_LAG_M));
+    return this.twist;
   }
 
   /**
@@ -175,5 +229,7 @@ export class PaintSystem {
     }
     this.activeStroke = null;
     this.activeSide = null;
+    this.twistAnchored = false;
+    this.twist = 0;
   }
 }

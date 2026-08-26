@@ -1,6 +1,7 @@
 import type * as THREE from "three";
 import type { SprayCan } from "../paint/SprayCan";
 import type { Aim } from "../paint/Aim";
+import type { PaintSystem } from "../paint/PaintSystem";
 import { capExtent } from "../paint/CapGeometry";
 import { CAP_PATHS } from "./CapIcons";
 import { CAP_BY_ID, type CapId } from "../config";
@@ -24,11 +25,13 @@ export class SprayCursor {
   private lastSize = -1;
   private lastOpacity = -1;
   private lastCap: CapId | null = null;
+  private lastTwist = 0;
 
   constructor(
     private camera: THREE.PerspectiveCamera,
     private can: SprayCan,
     private aim: Aim,
+    private paint: PaintSystem,
   ) {
     this.element = document.getElementById(
       "crosshair",
@@ -81,6 +84,14 @@ export class SprayCursor {
     if (opacity !== this.lastOpacity) {
       this.element.style.opacity = String(opacity);
       this.lastOpacity = opacity;
+    }
+
+    // A cap that turns with the stroke has to turn on the cursor too, or the
+    // outline stops describing the mark it is about to leave.
+    const twist = Math.round(this.paint.capTwist * 1000) / 1000;
+    if (twist !== this.lastTwist) {
+      this.element.style.setProperty("--twist", `${twist}rad`);
+      this.lastTwist = twist;
     }
   }
 }

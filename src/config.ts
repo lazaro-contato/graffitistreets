@@ -135,6 +135,12 @@ export const SPRAY = {
   MIN_SIZE: 0.08, // tightest cone — a thin line
   MAX_SIZE: 1, // widest cone, and the size the can starts at
   SIZE_STEP: 0.12, // multiplicative step per wheel notch, so each click feels equal
+  // Twist: a cap that turns keeps whatever grip the stroke started with, and
+  // the wrist carries it round as you arc. Lag is measured in travel, not
+  // time, because the swing comes from dragging, not from waiting.
+  TWIST_LAG_M: 0.3, // meters of travel to catch up with a turn
+  TWIST_MIN_STEP_M: 0.008, // shorter than this is jitter, not a direction
+
   DAB_SPACING: 0.25, // fraction of the radius between interpolated dabs
   SPECKLES: 22, // grain particles per dab
   SPECKLE_SPREAD: 1.15, // how far speckles overshoot the radius
@@ -243,6 +249,14 @@ export type CapDefinition = {
   flow: number;
   /** Multiplier on the amount of grain. */
   grain: number;
+  /**
+   * Whether the mark turns with the stroke.
+   *
+   * Off for the flat tools on purpose: a calligraphy cap's whole identity is
+   * the fixed angle that makes it thick one way and thin the other. Turn it
+   * and it stops being a calligraphy cap.
+   */
+  twists: boolean;
 };
 
 export const CAPS: readonly CapDefinition[] = [
@@ -258,6 +272,7 @@ export const CAPS: readonly CapDefinition[] = [
     softness: 0.6,
     flow: 1,
     grain: 1,
+    twists: false,
   },
   {
     id: "square",
@@ -271,6 +286,7 @@ export const CAPS: readonly CapDefinition[] = [
     softness: 0.6,
     flow: 1,
     grain: 1,
+    twists: false,
   },
   {
     id: "flare",
@@ -285,6 +301,7 @@ export const CAPS: readonly CapDefinition[] = [
     softness: 0.95,
     flow: 0.62,
     grain: 1.8,
+    twists: false,
   },
   {
     id: "calligraphy",
@@ -298,6 +315,7 @@ export const CAPS: readonly CapDefinition[] = [
     softness: 0.35,
     flow: 1.15,
     grain: 0.7,
+    twists: false,
   },
   {
     id: "marker",
@@ -311,6 +329,7 @@ export const CAPS: readonly CapDefinition[] = [
     softness: 0.15,
     flow: 1.5,
     grain: 0.35,
+    twists: false,
   },
   {
     id: "roller",
@@ -324,6 +343,7 @@ export const CAPS: readonly CapDefinition[] = [
     softness: 0.08,
     flow: 1.9,
     grain: 0.15,
+    twists: true,
   },
 ];
 

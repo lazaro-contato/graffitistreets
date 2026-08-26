@@ -52,7 +52,7 @@ const authorId = crypto.randomUUID();
 const aim = new Aim(engine.camera, walls);
 const drips = new DripSystem(transport, authorId);
 const paint = new PaintSystem(aim, can, transport, drips, authorId);
-const cursor = new SprayCursor(engine.camera, can, aim);
+const cursor = new SprayCursor(engine.camera, can, aim, paint);
 
 // The message loop: everything that paints goes through here.
 transport.onMessage((message) => {

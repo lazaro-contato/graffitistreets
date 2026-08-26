@@ -33,6 +33,7 @@ function stampAcrossPanels(
   color: string,
   alpha: number,
   cap: CapId,
+  twist: number,
   restrictTo?: ReadonlySet<number>,
 ) {
   // Spill is measured with the cap's outer extent, not the nominal radius: a
@@ -51,6 +52,7 @@ function stampAcrossPanels(
       color,
       alpha,
       cap,
+      twist,
     );
     panel.dirty = true;
   }
@@ -85,6 +87,7 @@ export function renderStroke(
         stroke.color,
         point.a,
         stroke.cap,
+        point.w ?? 0,
         restrictTo,
       );
       continue;
@@ -98,6 +101,8 @@ export function renderStroke(
     const px = prev.u * strip.widthPx;
     const py = (1 - prev.v) * PANEL_TEXTURE_HEIGHT;
     const prevRadiusPx = toPixels(prev.r);
+    const prevTwist = prev.w ?? 0;
+    const twist = point.w ?? 0;
 
     const dist = Math.hypot(x - px, y - py);
     const step = Math.max(1, radiusPx * SPRAY.DAB_SPACING);
@@ -113,6 +118,7 @@ export function renderStroke(
         stroke.color,
         prev.a + (point.a - prev.a) * t,
         stroke.cap,
+        prevTwist + (twist - prevTwist) * t,
         restrictTo,
       );
     }

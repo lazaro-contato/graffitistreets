@@ -155,8 +155,29 @@ rect or triangle), an aspect ratio, an angle, and how the paint comes out
 branching in the brush, and the backpack builds its pockets from the
 categories, so a new entry needs no UI work at all.
 
-Caps do not turn with the stroke. That is the point of the flat ones: a
-calligraphy cap paints thick across its edge and thin along it.
+Most caps do not turn with the stroke, and that is the point of the flat ones:
+a calligraphy cap paints thick across its edge and thin along it, which only
+works from a fixed angle. The roller is the exception — see below.
+
+## The roller turns with your wrist
+
+`cap.twists` opts a cap into following the stroke. Only the roller has it.
+
+The angle is measured against the heading the stroke **started** with, not
+against the wall. So a cap keeps whatever grip it was laid down at: start
+rolling upwards and it stays across the travel through a turn; start sideways
+and it stays along it, straight, however far you go. Arcing mid-stroke is what
+swings it, and the lag is what puts it on the diagonal while it catches up —
+roughly 44 degrees, 20 cm into a right-angle turn.
+
+The lag is spent in **travel**, not in time (`SPRAY.TWIST_LAG_M`), because the
+swing comes from dragging the thing rather than from holding still. Standing
+still therefore never rotates it.
+
+The angle is recorded on each `StrokePoint` rather than recomputed at draw
+time: it depends on the whole stroke so far, and the renderer only ever sees
+one segment. Storing it keeps replay, undo and future network sync exact for
+free, the same way `r` and `a` already work.
 
 Three things follow from the footprints not being circles:
 

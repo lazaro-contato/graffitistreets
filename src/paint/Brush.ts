@@ -56,12 +56,13 @@ export function stampDab(
   color: string,
   alpha: number,
   capId: CapId,
+  twist = 0,
 ) {
   const cap = CAP_BY_ID.get(capId)!;
   const extents = capHalfExtents(radius, cap);
   const halfW = Math.max(MIN_HALF_EXTENT_PX, extents.halfW);
   const halfH = Math.max(MIN_HALF_EXTENT_PX, extents.halfH);
-  const angle = cap.angle * DEG_TO_RAD;
+  const angle = cap.angle * DEG_TO_RAD + twist;
 
   // The body is drawn in unit space. Scaling the context, rather than baking
   // the shape into device coordinates, is what makes the gradient stretch with

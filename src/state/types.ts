@@ -6,6 +6,12 @@ export type StrokePoint = {
   v: number; // 0..1 up the wall
   r: number; // footprint radius on the wall, in meters
   a: number; // dab alpha
+  /**
+   * Twist of the cap at this point, in radians, added to its fixed angle.
+   * Recorded rather than recomputed: it depends on the whole stroke so far,
+   * and the renderer only ever sees one segment at a time.
+   */
+  w?: number;
 };
 
 /**

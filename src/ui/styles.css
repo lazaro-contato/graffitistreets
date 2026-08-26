@@ -337,7 +337,8 @@ body {
   top: 50%;
   width: 0;
   height: 0;
-  transform: translate(-50%, -50%);
+  /* --twist is written by SprayCursor while a turning cap is mid-stroke */
+  transform: translate(-50%, -50%) rotate(var(--twist, 0rad));
   overflow: visible;
   pointer-events: none;
 }
