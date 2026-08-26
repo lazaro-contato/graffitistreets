@@ -33,10 +33,16 @@ import { ADS } from "./config";
 
 const canvas = document.getElementById("app") as HTMLCanvasElement;
 const hud = document.getElementById("hud")!;
-// Fifteen counted steps: six wall files, three road files, two ad panels, the
-// world itself, the menu artwork, the shark and the display face. Counted
-// rather than estimated, so the bar tells the truth.
-const loading = new LoadingScreen(15);
+// Counted rather than estimated, so the bar tells the truth — including when
+// the ad panels are switched off and there are two fewer files to wait for.
+const loading = new LoadingScreen(
+  6 + // wall textures, three a side
+    3 + // road textures
+    (ADS.ENABLED ? 2 : 0) + // ad artwork, one per language
+    1 + // building the world
+    2 + // menu artwork and the shark
+    1, // the display face
+);
 
 const engine = new Engine(canvas);
 const loop = new Loop();
@@ -64,15 +70,22 @@ const transport = new LocalTransport();
 // authorId into single player code means an optional field in thirty places.
 const authorId = crypto.randomUUID();
 
-const billboards = buildBillboards(
-  engine.scene,
-  await loadAdTextures(() => loading.advance()),
-  ADS.HOUSE_LINK,
-);
-billboards.setLocale(getLocale());
-onLocaleChange(() => billboards.setLocale(getLocale()));
+// Off by default — see ADS.ENABLED. With it off nothing is built, the two
+// artwork files are never fetched, and Aim has nothing clickable to test.
+const billboards = ADS.ENABLED
+  ? buildBillboards(
+      engine.scene,
+      await loadAdTextures(() => loading.advance()),
+      ADS.HOUSE_LINK,
+    )
+  : null;
 
-const aim = new Aim(engine.camera, walls, billboards.meshes);
+if (billboards) {
+  billboards.setLocale(getLocale());
+  onLocaleChange(() => billboards.setLocale(getLocale()));
+}
+
+const aim = new Aim(engine.camera, walls, billboards?.meshes ?? []);
 const drips = new DripSystem(transport, authorId);
 const paint = new PaintSystem(aim, can, transport, drips, authorId);
 const cursor = new SprayCursor(engine.camera, can, aim, paint);

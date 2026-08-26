@@ -195,6 +195,16 @@ export const PHOTO = {
  * two metres is right for a can and useless for a sign you are meant to read.
  */
 export const ADS = {
+  /**
+   * Off until there is something to advertise. Kept as a switch rather than as
+   * commented-out code so it stays compiled, type-checked and honest: turning
+   * it on is one boolean, and it cannot quietly rot in the meantime.
+   *
+   * With it off, the panels are not built, the two artwork files are not
+   * fetched, and Aim goes back to having nothing clickable to test.
+   */
+  ENABLED: false,
+
   WIDTH: 3,
   HEIGHT: 1.5,
   CENTRE_Y: 1.9, // a little above eye line, the way signage sits
