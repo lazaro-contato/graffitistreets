@@ -129,6 +129,7 @@ const menu = new Menu({
     player.setMode(menu.mode);
     enterStreet("modes");
   },
+  onBrushSizing: (sizing) => can.setSizing(sizing),
   onResume: () => enterStreet("pause"),
   onQuit: () => menu.show("main"),
 });
@@ -210,7 +211,8 @@ window.addEventListener("keydown", (e) => {
   // Escape while locked is the browser's to handle: it drops the lock and the
   // unlock listener above brings up the pause screen.
   if (inventory.isOpen) closeBackpack();
-  else if (menu.current === "controls" || menu.current === "modes") menu.back();
+  else if (menu.current && menu.current !== "main" && menu.current !== "pause")
+    menu.back();
   else if (menu.current === "pause") enterStreet("pause");
 });
 

@@ -425,6 +425,13 @@ body {
   border-left-color: var(--neon);
 }
 
+/* A setting is the opposite case: nothing happens when you press it, so the
+   chosen one has to carry the whole state on its own. */
+.is-setting .mode-card[aria-pressed="true"] {
+  border-color: var(--neon);
+  background: rgba(57, 255, 20, 0.12);
+}
+
 /* Controls sheet */
 #control-list {
   width: 100%;

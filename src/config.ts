@@ -218,6 +218,23 @@ export const ADS = {
   HOUSE_LINK: "https://example.com/anuncie",
 } as const;
 
+/**
+ * How the spray decides its own width.
+ *
+ * `auto` is the can: the cone opens as you back away from the wall, and the
+ * paint thins with it. `fixed` hands that dial to the wheel instead, so a
+ * stroke stays the width you set wherever you stand — closer to a drawing tool
+ * than to a can, and much easier to be deliberate with.
+ */
+export type BrushSizing = "auto" | "fixed";
+
+export const BRUSH_SIZINGS: readonly { id: BrushSizing }[] = [
+  { id: "auto" },
+  { id: "fixed" },
+];
+
+export const DEFAULT_BRUSH_SIZING: BrushSizing = "auto";
+
 /** Canvas size of one panel, in pixels. */
 export const PANEL_TEXTURE_WIDTH =
   WORLD.PANEL_WIDTH * TEXTURE.PIXELS_PER_METER;

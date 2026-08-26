@@ -1,14 +1,39 @@
-import { MOVEMENT_MODES, type MovementMode } from "../config";
+import {
+  MOVEMENT_MODES,
+  BRUSH_SIZINGS,
+  DEFAULT_BRUSH_SIZING,
+  type BrushSizing,
+  type MovementMode,
+} from "../config";
 import { LOCALES, type Locale } from "../i18n/strings";
 import { t, getLocale, setLocale } from "../i18n/i18n";
 
-export type MenuScreen = "main" | "modes" | "controls" | "pause";
+export type MenuScreen =
+  | "main"
+  | "modes"
+  | "settings"
+  | "controls"
+  | "pause";
+
+const BRUSH_KEY = "graffiti.brushSizing";
+
+function storedBrushSizing(): BrushSizing {
+  try {
+    const saved = localStorage.getItem(BRUSH_KEY);
+    if (saved === "auto" || saved === "fixed") return saved;
+  } catch {
+    // private mode — fall through to the default
+  }
+  return DEFAULT_BRUSH_SIZING;
+}
 
 /** Screens reached from another one, which a Back has to return from. */
-const SUB_SCREENS = new Set<MenuScreen>(["modes", "controls"]);
+const SUB_SCREENS = new Set<MenuScreen>(["modes", "settings", "controls"]);
 
 export type MenuHandlers = {
   onPlay: () => void;
+  /** Fires on every change, including the stored one restored at start-up. */
+  onBrushSizing: (sizing: BrushSizing) => void;
   onResume: () => void;
   onQuit: () => void;
 };
@@ -57,10 +82,19 @@ export class Menu {
 
   mode: MovementMode = "walk";
 
+  /** Restored from the last visit: a preference, not a per-session choice. */
+  brushSizing: BrushSizing = storedBrushSizing();
+
   constructor(private handlers: MenuHandlers) {
     this.root = document.getElementById("menu")!;
 
-    for (const screen of ["main", "modes", "controls", "pause"] as const) {
+    for (const screen of [
+      "main",
+      "modes",
+      "settings",
+      "controls",
+      "pause",
+    ] as const) {
       this.screens.set(
         screen,
         this.root.querySelector<HTMLElement>(`[data-screen="${screen}"]`)!,
@@ -70,6 +104,7 @@ export class Menu {
     this.root.style.setProperty("--menu-art", `url("${MENU_ART}")`);
 
     this.buildModeChoices();
+    this.buildBrushChoices();
     this.buildLanguageChoices();
     this.buildControls();
 
@@ -83,6 +118,7 @@ export class Menu {
       else if (action === "resume") this.handlers.onResume();
       else if (action === "quit") this.handlers.onQuit();
       else if (action === "controls") this.show("controls");
+      else if (action === "settings") this.show("settings");
       else if (action === "back") this.back();
     });
   }
@@ -122,6 +158,44 @@ export class Menu {
     for (const [id, button] of this.modeButtons) {
       button.setAttribute("aria-pressed", String(id === this.mode));
     }
+  }
+
+  /**
+   * How the spray picks its width. Unlike the mode cards this only sets
+   * something, so the chosen one is filled rather than merely edged.
+   */
+  private buildBrushChoices() {
+    const host = this.root.querySelector("#brush-choices")!;
+    const buttons = new Map<BrushSizing, HTMLButtonElement>();
+
+    const choose = (sizing: BrushSizing) => {
+      this.brushSizing = sizing;
+      try {
+        localStorage.setItem(BRUSH_KEY, sizing);
+      } catch {
+        // The choice still holds for this visit.
+      }
+      for (const [id, button] of buttons) {
+        button.setAttribute("aria-pressed", String(id === sizing));
+      }
+      this.handlers.onBrushSizing(sizing);
+    };
+
+    for (const option of BRUSH_SIZINGS) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "mode-card";
+      button.innerHTML =
+        `<strong data-i18n="brush.${option.id}.label">` +
+        `${t(`brush.${option.id}.label`)}</strong>` +
+        `<span data-i18n="brush.${option.id}.hint">` +
+        `${t(`brush.${option.id}.hint`)}</span>`;
+      button.addEventListener("click", () => choose(option.id));
+      buttons.set(option.id, button);
+      host.appendChild(button);
+    }
+
+    choose(this.brushSizing);
   }
 
   /**

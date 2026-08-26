@@ -124,8 +124,33 @@
             Controles
           </button>
 
+          <button
+            class="menu-item"
+            data-action="settings"
+            type="button"
+            data-i18n="menu.settings"
+          >
+            Configurações
+          </button>
+
           <p class="kicker" data-i18n="menu.kicker.language">// idioma</p>
           <div class="pill-row" id="language-choices"></div>
+        </section>
+
+        <section class="screen" data-screen="settings" hidden>
+          <h2 data-i18n="menu.settings">Configurações</h2>
+          <p class="kicker" data-i18n="menu.kicker.brush">
+            // tamanho do pincel
+          </p>
+          <div class="mode-cards is-setting" id="brush-choices"></div>
+          <button
+            class="menu-link"
+            data-action="back"
+            type="button"
+            data-i18n="menu.back"
+          >
+            Voltar
+          </button>
         </section>
 
         <section class="screen" data-screen="modes" hidden>
