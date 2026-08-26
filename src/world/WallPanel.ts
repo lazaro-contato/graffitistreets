@@ -8,7 +8,7 @@ import {
   type Side,
 } from "../config";
 import { createRandom } from "../core/Random";
-import { BARE_WALL, type WallSurface } from "./WallSurface";
+import { BARE_WALL, type WallSurface } from "./Surfaces";
 
 export type { Side };
 
@@ -94,15 +94,20 @@ export class WallPanel {
   private tileMap(source: THREE.Texture | null) {
     if (!source) return null;
 
+    const image = source.image as { width: number; height: number };
+    const tileWidth = this.surface.tileMeters;
+    // A source that is not square covers a patch of wall that is not square
+    // either. Honouring its aspect is what keeps the relief lined up with the
+    // albedo, which is tiled into the canvas under exactly the same rule —
+    // assume square here and a 1024x715 photo puts the two out of step.
+    const tileHeight = tileWidth * (image.height / image.width);
+
     const texture = source.clone();
     texture.repeat.set(
-      WORLD.PANEL_WIDTH / SURFACE.TILE_METERS,
-      WORLD.WALL_HEIGHT / SURFACE.TILE_METERS,
+      WORLD.PANEL_WIDTH / tileWidth,
+      WORLD.WALL_HEIGHT / tileHeight,
     );
-    texture.offset.set(
-      (this.index * WORLD.PANEL_WIDTH) / SURFACE.TILE_METERS,
-      0,
-    );
+    texture.offset.set((this.index * WORLD.PANEL_WIDTH) / tileWidth, 0);
     texture.needsUpdate = true;
     return texture;
   }
@@ -110,7 +115,7 @@ export class WallPanel {
   /**
    * Tiles the wall photograph into the canvas as the base coat.
    *
-   * One tile covers SURFACE.TILE_METERS of wall whatever the file's pixel size,
+   * One tile covers this.surface.tileMeters of wall whatever the file's pixel size,
    * so brick stays brick-sized if the texture resolution or the panel changes.
    * The horizontal shift is where this panel sits along the strip, so courses
    * run straight through the seam instead of restarting at every panel.
@@ -120,7 +125,7 @@ export class WallPanel {
     const pattern = ctx.createPattern(image, "repeat");
     if (!pattern) return false;
 
-    const scale = (SURFACE.TILE_METERS * TEXTURE.PIXELS_PER_METER) / image.width;
+    const scale = (this.surface.tileMeters * TEXTURE.PIXELS_PER_METER) / image.width;
     const shift = -this.index * PANEL_TEXTURE_WIDTH;
 
     pattern.setTransform(new DOMMatrix().translate(shift, 0).scale(scale, scale));

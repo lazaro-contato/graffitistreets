@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { WallPanel } from "./WallPanel";
 import { WallStrip } from "./WallStrip";
 import { PANELS_PER_SIDE, type Side } from "../config";
-import { BARE_WALL, type WallSurface } from "./WallSurface";
+import { BARE_WALL, type WallSurface } from "./Surfaces";
 
 /** Owns both wall strips and the once-per-frame texture upload. */
 export class WallSystem {
@@ -14,9 +14,17 @@ export class WallSystem {
   /** Cached raycast targets — PaintSystem hits this 60 times a second. */
   readonly meshes: THREE.Mesh[];
 
-  constructor(surface: WallSurface = BARE_WALL) {
-    this.left = new WallStrip("left", 0, this.group, surface);
-    this.right = new WallStrip("right", PANELS_PER_SIDE, this.group, surface);
+  /** Each side is dressed separately, so the two walls can differ. */
+  constructor(
+    surfaces: Record<Side, WallSurface> = { left: BARE_WALL, right: BARE_WALL },
+  ) {
+    this.left = new WallStrip("left", 0, this.group, surfaces.left);
+    this.right = new WallStrip(
+      "right",
+      PANELS_PER_SIDE,
+      this.group,
+      surfaces.right,
+    );
     this.panels = [...this.left.panels, ...this.right.panels];
     this.meshes = this.panels.map((panel) => panel.mesh);
   }

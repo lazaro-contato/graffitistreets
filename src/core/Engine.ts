@@ -24,9 +24,8 @@ export class Engine {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
 
+    // Sky and fog belong to the scenery, not the engine — see buildStreet.
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color("#9db4c8");
-    this.scene.fog = new THREE.Fog("#9db4c8", 30, 90);
 
     this.camera = new THREE.PerspectiveCamera(
       72,

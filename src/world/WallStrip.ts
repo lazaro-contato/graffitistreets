@@ -1,7 +1,7 @@
 import type * as THREE from "three";
 import { WallPanel } from "./WallPanel";
 import { PANELS_PER_SIDE, PANEL_TEXTURE_WIDTH, type Side } from "../config";
-import { BARE_WALL, type WallSurface } from "./WallSurface";
+import { BARE_WALL, type WallSurface } from "./Surfaces";
 
 /**
  * One side of the street, treated as a single continuous paint surface.

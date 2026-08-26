@@ -3,7 +3,7 @@ import { Loop } from "./core/Loop";
 import { Input } from "./core/Input";
 import { buildStreet } from "./world/Street";
 import { WallSystem } from "./world/WallSystem";
-import { loadWallSurface } from "./world/WallSurface";
+import { loadWallSurfaces, loadRoadSurface } from "./world/Surfaces";
 import { Player } from "./player/Player";
 import { SprayCan } from "./paint/SprayCan";
 import { Aim } from "./paint/Aim";
@@ -19,25 +19,25 @@ import { LoadingScreen } from "./ui/Loading";
 
 const canvas = document.getElementById("app") as HTMLCanvasElement;
 const hud = document.getElementById("hud")!;
-// Seven counted steps: three wall files, the world itself, the menu artwork,
-// the shark and the display face. Counted rather than estimated, so the bar
-// tells the truth.
-const loading = new LoadingScreen(7);
+// Thirteen counted steps: six wall files, three road files, the world itself,
+// the menu artwork, the shark and the display face. Counted rather than
+// estimated, so the bar tells the truth.
+const loading = new LoadingScreen(13);
 
 const engine = new Engine(canvas);
 const loop = new Loop();
 const input = new Input(canvas);
 
-buildStreet(engine.scene);
+buildStreet(engine.scene, await loadRoadSurface(() => loading.advance()));
 
 // Awaited before the walls exist, because the photograph is tiled into each
 // panel canvas as its base coat — there is no adding it afterwards without
 // repainting every panel. The loading screen is already up, in the markup.
-const surface = await loadWallSurface(() => loading.advance());
+const surfaces = await loadWallSurfaces(() => loading.advance());
 await loading.breathe();
 
 // Building the panels blocks the main thread, so let the bar paint first.
-const walls = new WallSystem(surface);
+const walls = new WallSystem(surfaces);
 engine.scene.add(walls.group);
 loading.advance();
 await loading.breathe();

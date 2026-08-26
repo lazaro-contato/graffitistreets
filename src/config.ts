@@ -4,12 +4,69 @@
  */
 
 export const WORLD = {
-  STREET_LENGTH: 8, // meters, along Z — the wall runs the whole length
-  STREET_WIDTH: 12, // meters, along X (wall to wall)
+  STREET_LENGTH: 12, // meters, along Z — the wall runs the whole length
+  // Narrower than it is long, so it reads as an alley. At 12 it was wider than
+  // long, which reads as a plaza, and the middle was dead space anyway since
+  // the spray only reaches 2 m.
+  STREET_WIDTH: 6, // meters, along X (wall to wall)
   WALL_HEIGHT: 3,
   PANEL_WIDTH: 4, // width of each paintable panel; must divide STREET_LENGTH
-  SIDEWALK_WIDTH: 1.6,
-  SIDEWALK_HEIGHT: 0.15,
+
+  // Scenery that closes the box. None of it is paintable: the eye reaches
+  // 3.5 m in free flight and the wall stops at 3, so without something above
+  // and beyond it you fly up and look straight into empty sky.
+  BUILDING_HEIGHT: 9,
+  BUILDING_DEPTH: 4, // how far the mass behind each wall extends outward
+  END_DEPTH: 3, // thickness of the blocks capping each end of the alley
+  COPING_OVERHANG: 0.2, // how far the wall cap juts back over the alley
+  COPING_HEIGHT: 0.18,
+} as const;
+
+/**
+ * Night, and only night. Both pieces of key art are night scenes lit by hard
+ * sources, and a warm lamp raking across a wall shows paint far better than
+ * flat daylight does.
+ *
+ * Spot intensities are in candela and fall off with the square of distance,
+ * which is why the lamp number is large and the fills are not.
+ */
+export const NIGHT = {
+  SKY: "#0a0d14",
+  FOG_NEAR: 8,
+  FOG_FAR: 34,
+
+  // Kept low so the lamps' own falloff is what shapes the scene. Neither of
+  // these attenuates with distance, so every unit of them is a flat floor
+  // laid under the lamps, flattening exactly the gradient that makes a light
+  // look like it has a source.
+  FILL_SKY: "#243049",
+  FILL_GROUND: "#0b0b10",
+  FILL_INTENSITY: 0.16,
+
+  MOON_COLOR: "#8fa4d4",
+  MOON_INTENSITY: 0.18,
+} as const;
+
+/**
+ * The street lamps: two of them, one per side, at opposite ends.
+ *
+ * Both cast shadows. With only two sources the poles throw a shadow apiece
+ * from opposite directions, and crossing shadows are the clearest signal
+ * there is that light comes from somewhere.
+ */
+export const LAMP = {
+  COLOR: "#ffcf94",
+  INTENSITY: 220, // two now instead of four, so each pulls its weight
+  ANGLE: 1.05, // radians, half-angle of the cone
+  PENUMBRA: 0.45,
+  RANGE: 18, // the alley diagonal is far short of this; it is only a backstop
+  HEIGHT: 4,
+  END_INSET: 1.4, // meters in from each end of the alley
+  // Tucked against the wall on purpose: the player's box reaches |x| = 2.60,
+  // so a pole any further out could be walked into, and the camera would end
+  // up inside it.
+  WALL_GAP: 0.15, // meters out from the wall face
+  ARM_REACH: 1.1, // how far the bracket carries the head over the alley
 } as const;
 
 /**
@@ -53,21 +110,69 @@ export const TEXTURE = {
 } as const;
 
 /**
- * Optional wall photography, dropped into `public/wall/`.
+ * Optional wall photography, one set per side, dropped into `public/wall/`.
  *
  * The albedo is NOT a material map: the panel canvas is the colour texture,
  * because paint is drawn on top of it, so the photo is tiled into that canvas
  * as the base coat. Normal and roughness never get painted, so those go on the
- * material and are shared between panels.
+ * material and are shared between the panels of a side.
  *
- * Any file that is missing simply falls back to the procedural concrete.
+ * Each side is independent. Any file that is missing falls back to the
+ * procedural concrete, so one dressed wall and one bare one is fine.
  */
+export type SurfaceSpec = {
+  albedo: string;
+  normal: string; // OpenGL convention (green up), not DirectX
+  roughness: string;
+  /**
+   * How much wall one tile of those images covers.
+   *
+   * Per side, not global: a concrete panel and a coat of flaking paint are
+   * photographed at different scales, and forcing both to the same tile would
+   * leave one of them obviously the wrong size.
+   */
+  tileMeters: number;
+};
+
+/**
+ * Textures live under their own name, and each side points at one.
+ *
+ * This one is cast panels: two plates across the tile and four up it. At 2.4 m
+ * that makes each plate 1.20 x 0.60 m, the standard cladding size — and it
+ * divides the wall exactly, five rows up the 3 m and ten along the 12 m, so
+ * the joints never land half way through a plate.
+ */
+const CONCRETE_031: SurfaceSpec = {
+  albedo: "/wall/concrete031/albedo.jpg",
+  normal: "/wall/concrete031/normal.jpg",
+  roughness: "/wall/concrete031/roughness.jpg",
+  tileMeters: 2.4,
+};
+
+export const SURFACES: Record<Side, SurfaceSpec> = {
+  left: CONCRETE_031,
+  right: CONCRETE_031,
+};
+
+/**
+ * The road.
+ *
+ * One tile spans the full width on purpose. The photograph carries a painted
+ * line down its edge, so tiling it at any other scale scatters yellow stripes
+ * across the asphalt; at exactly one tile across, with half a tile of offset,
+ * that line lands on the centre of the alley and reads as road marking.
+ */
+export const ROAD_SURFACE: SurfaceSpec = {
+  albedo: "/road/albedo.jpg",
+  normal: "/road/normal.jpg",
+  roughness: "/road/roughness.jpg",
+  tileMeters: WORLD.STREET_WIDTH,
+};
+
+/** Half a tile, which is what puts the painted line on the centre line. */
+export const ROAD_OFFSET_U = 0.5;
+
 export const SURFACE = {
-  ALBEDO: "/wall/albedo.jpg",
-  NORMAL: "/wall/normal.jpg", // OpenGL convention (green up), not DirectX
-  ROUGHNESS: "/wall/roughness.jpg",
-  /** How much wall one tile of those images covers. Keeps brick brick-sized. */
-  TILE_METERS: 2,
   /** Damp patches kept over the photo, so panels do not read as clones. */
   GRUNGE_ALPHA: 0.04,
 } as const;
