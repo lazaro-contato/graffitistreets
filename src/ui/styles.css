@@ -17,24 +17,25 @@ body {
   font-family: system-ui, sans-serif;
 }
 
-/* Sedgwick Ave Display is a marker face: right for headings and buttons, and
-   unreadable at 0.8rem in a two-column key list. Body copy stays on the system
-   font on purpose. */
+/* Aldrich is a squared-off techno face: it carries headings and menu items,
+   and stays legible small enough for section labels. Body copy still runs on
+   the system font, which reads better in a two-column key list. */
 :root {
-  --display: "Sedgwick Ave Display", "Comic Sans MS", system-ui, cursive;
+  --display: "Aldrich", "Trebuchet MS", system-ui, sans-serif;
+  --neon: #39ff14;
 }
 
 /* Shown by the markup, so it paints before the module script runs and starts
-   building wall panels. Rotating a transform keeps the spinner on the
-   compositor, so it stays smooth even while the main thread is blocked. */
+   building wall panels. The sway is a transform, which stays on the compositor
+   and keeps moving even while the main thread is blocked doing that work. */
 #loading {
   position: fixed;
   inset: 0;
   display: grid;
   place-items: center;
-  background: #0a0c10;
+  background: #000;
   z-index: 50;
-  transition: opacity 0.35s ease;
+  transition: opacity 0.45s ease;
 }
 
 #loading.done {
@@ -42,191 +43,214 @@ body {
   pointer-events: none;
 }
 
-#loading .spinner {
-  width: 3rem;
-  height: 3rem;
-  border: 3px solid rgba(255, 255, 255, 0.14);
-  border-top-color: #e02020;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+#loading img {
+  /* The sticker is trimmed to its own bounds and portrait, so it is bounded on
+     both axes — a fixed width alone would run off a short viewport. */
+  max-width: min(20rem, 60vw);
+  max-height: 62vh;
+  /* Pinned near the top, so it swings like something hanging rather than
+     spinning around its middle. */
+  transform-origin: 50% 12%;
+  animation: sway 2.6s ease-in-out infinite;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
+@keyframes sway {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
   }
 }
 
-canvas#app {
-  display: block;
-  width: 100vw;
-  height: 100vh;
+#loading-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0.4rem;
+  background: rgba(255, 255, 255, 0.07);
 }
 
-/* Menu: main screen, pause screen, and the controls sheet shared by both.
-   Pointer lock is released whenever any of them is up. */
+#loading-bar {
+  width: 0;
+  height: 100%;
+  background: var(--neon);
+  box-shadow:
+    0 0 0.75rem rgba(57, 255, 20, 0.85),
+    0 0 2rem rgba(57, 255, 20, 0.45);
+  transition: width 0.3s ease;
+}
+
+/* Menu: a column of plain text down the right edge, no panel, with the street
+   art running full bleed behind it. Pointer lock is released whenever any of
+   these screens is up. */
 #menu {
   position: fixed;
   inset: 0;
   display: grid;
-  place-items: center;
-  padding: 1.5rem;
-  background: rgba(10, 12, 16, 0.88);
-  backdrop-filter: blur(6px);
+  align-items: end;
+  justify-items: start;
+  padding: clamp(1.5rem, 5vw, 4rem);
+  background: rgba(10, 12, 16, 0.9);
   color: #f2f2f2;
   z-index: 30;
   overflow-y: auto;
 }
 
-/* --menu-art is set from Menu.ts, so the loader preloads the same file */
+/* --menu-art is set from Menu.ts, so the loader preloads the same file.
+   Two gradients, no panel: the heavy one lifts off the floor, where the art is
+   only pavement, and a lighter one hugs the left edge. Weighted that way round
+   so the piece on the wall stays readable as the title. */
 #menu[data-art="on"] {
-  background-image:
-    radial-gradient(
-      ellipse at center,
-      rgba(8, 10, 14, 0.55) 0%,
-      rgba(8, 10, 14, 0.9) 75%
+  background:
+    linear-gradient(
+      0deg,
+      rgba(6, 8, 11, 0.96) 0%,
+      rgba(6, 8, 11, 0.62) 26%,
+      rgba(6, 8, 11, 0) 56%
     ),
-    var(--menu-art);
-  background-size: cover;
-  background-position: center;
-  backdrop-filter: none;
+    linear-gradient(
+      90deg,
+      rgba(6, 8, 11, 0.62) 0%,
+      rgba(6, 8, 11, 0) 42%
+    ),
+    var(--menu-art) center / cover no-repeat;
 }
 
 #menu .panel {
-  width: min(30rem, 100%);
+  width: min(24rem, 100%);
 }
 
-/* A card of its own, so the panel reads over the artwork without hiding it */
-#menu[data-art="on"] .panel {
-  padding: 1.75rem;
-  border-radius: 1.25rem;
-  background: rgba(8, 10, 14, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(10px);
+/* The key list needs more room than a menu of one-word items */
+#menu[data-screen="controls"] .panel {
+  width: min(34rem, 100%);
 }
 
 #menu .screen {
   display: grid;
-  gap: 0.6rem;
+  gap: 0.15rem;
+  justify-items: start;
 }
 
+/* The artwork already carries the name, so the heading only has to exist for
+   screen readers once the art is up. */
 #menu h1 {
   font-family: var(--display);
-  font-size: 3rem;
+  font-size: clamp(2.2rem, 5vw, 3rem);
   line-height: 1.05;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
   letter-spacing: -0.02em;
-  text-align: center;
+}
+
+#menu[data-art="on"] h1 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 #menu h2 {
   font-family: var(--display);
-  font-size: 1.6rem;
-  margin-bottom: 0.5rem;
-  letter-spacing: 0.1em;
+  font-size: 1.5rem;
+  margin-bottom: 0.6rem;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  opacity: 0.6;
-  text-align: center;
+  opacity: 0.55;
+}
+
+.kicker {
+  margin-bottom: 0.7rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  opacity: 0.42;
 }
 
 .menu-item {
-  width: 100%;
-  padding: 0.85rem 1.5rem;
-  border: 2px solid transparent;
-  border-radius: 0.75rem;
-  background: #e02020;
-  color: #fff;
-  font: inherit;
+  padding: 0.3rem 0;
+  border: 0;
+  background: none;
+  color: #f2f2f2;
   font-family: var(--display);
-  font-size: 1.35rem;
-  font-weight: 400;
-  letter-spacing: 0.01em;
+  font-size: clamp(1.5rem, 3vw, 2.1rem);
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-align: left;
   cursor: pointer;
   transition:
-    background 0.12s ease,
-    border-color 0.12s ease;
+    color 0.12s ease,
+    transform 0.12s ease;
 }
 
 .menu-item:hover {
-  background: #ff3030;
+  color: var(--neon);
+  transform: translateX(0.3rem);
 }
 
-.menu-item.ghost {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.18);
-  font-weight: 500;
-}
-
-.menu-item.ghost:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.4);
-}
-
-/* Settings is not a button — it is a labelled pair you choose between */
-.menu-group {
-  margin: 0.4rem 0;
-  padding: 0.9rem;
-  border-radius: 0.75rem;
-  background: rgba(0, 0, 0, 0.25);
-}
-
-.menu-group-label {
-  font-family: var(--display);
-  margin-bottom: 0.6rem;
-  font-size: 0.85rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  opacity: 0.45;
-}
-
-.menu-choices {
+/* Mode cards: the play button, split in two. Picking one sets how you move
+   and goes straight in, so these are actions, not a setting to toggle. */
+.mode-cards {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0.6rem;
+  width: min(24rem, 100%);
+  margin: 0.3rem 0 0.2rem;
 }
 
-.menu-choice {
+.mode-card {
   display: grid;
-  gap: 0.15rem;
-  padding: 0.7rem 0.6rem;
-  border: 2px solid rgba(255, 255, 255, 0.12);
-  border-radius: 0.6rem;
-  background: rgba(255, 255, 255, 0.04);
+  gap: 0.25rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-left: 3px solid rgba(255, 255, 255, 0.16);
+  border-radius: 0.4rem;
+  background: rgba(10, 12, 16, 0.6);
   color: inherit;
   font: inherit;
-  text-align: center;
+  text-align: left;
   cursor: pointer;
   transition:
     border-color 0.12s ease,
-    background 0.12s ease;
+    background 0.12s ease,
+    transform 0.12s ease;
 }
 
-.menu-choice strong {
+.mode-card strong {
   font-family: var(--display);
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 400;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-.menu-choice span {
+.mode-card span {
   font-size: 0.72rem;
-  line-height: 1.3;
-  opacity: 0.5;
+  line-height: 1.35;
+  opacity: 0.55;
 }
 
-.menu-choice:hover {
-  border-color: rgba(255, 255, 255, 0.35);
+.mode-card:hover {
+  border-color: var(--neon);
+  background: rgba(57, 255, 20, 0.1);
+  transform: translateY(-2px);
 }
 
-.menu-choice[aria-pressed="true"] {
-  border-color: #e02020;
-  background: rgba(224, 32, 32, 0.16);
-}
-
-.menu-choice[aria-pressed="true"] span {
-  opacity: 0.75;
+/* The one you played last, marked on the edge rather than filled in — these
+   are buttons you are about to press, not a setting sitting there chosen. */
+.mode-card[aria-pressed="true"] {
+  border-left-color: var(--neon);
 }
 
 /* Controls sheet */
+#control-list {
+  width: 100%;
+}
+
 .control-group {
   margin-bottom: 1rem;
 }
@@ -254,7 +278,7 @@ canvas#app {
   font-size: 0.78rem;
   text-align: right;
   opacity: 0.9;
-  color: #ffb3b3;
+  color: var(--neon);
 }
 
 .control-row span {
@@ -263,22 +287,24 @@ canvas#app {
 }
 
 .menu-link {
-  justify-self: center;
-  margin-top: 0.5rem;
-  padding: 0.5rem 1rem;
+  margin-top: 0.6rem;
+  padding: 0.4rem 0;
   border: 0;
   background: none;
   color: inherit;
   font-family: var(--display);
-  font-size: 1.1rem;
-  opacity: 0.6;
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  opacity: 0.55;
   cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 0.25rem;
+  transition:
+    opacity 0.12s ease,
+    color 0.12s ease;
 }
 
 .menu-link:hover {
   opacity: 1;
+  color: var(--neon);
 }
 
 /* Spray cursor: the cap outline, sized every frame by SprayCursor to match

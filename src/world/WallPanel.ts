@@ -2,11 +2,13 @@ import * as THREE from "three";
 import {
   WORLD,
   TEXTURE,
+  SURFACE,
   PANEL_TEXTURE_WIDTH,
   PANEL_TEXTURE_HEIGHT,
   type Side,
 } from "../config";
 import { createRandom } from "../core/Random";
+import { BARE_WALL, type WallSurface } from "./WallSurface";
 
 export type { Side };
 
@@ -29,7 +31,12 @@ export class WallPanel {
   /** Set whenever the canvas changes; WallSystem flushes once per frame. */
   dirty = false;
 
-  constructor(id: number, side: Side, index: number) {
+  constructor(
+    id: number,
+    side: Side,
+    index: number,
+    private surface: WallSurface = BARE_WALL,
+  ) {
     this.id = id;
     this.side = side;
     this.index = index;
@@ -52,6 +59,8 @@ export class WallPanel {
     );
     const material = new THREE.MeshStandardMaterial({
       map: this.texture,
+      normalMap: this.tileMap(surface.normal),
+      roughnessMap: this.tileMap(surface.roughness),
       roughness: 0.95,
       metalness: 0.0,
     });
@@ -76,9 +85,57 @@ export class WallPanel {
   }
 
   /**
-   * Base concrete plus noise. Also used by reset and journal replay, so it is
-   * seeded from the panel id — a random base would visibly reshuffle every
-   * time an undo repaints the panel.
+   * Repeats a shared data map across this panel.
+   *
+   * Every panel gets its own clone so it can carry its own offset — the tiling
+   * has to keep running through a seam, not restart at each panel. Clones share
+   * the underlying image, so this costs one GPU upload, not four.
+   */
+  private tileMap(source: THREE.Texture | null) {
+    if (!source) return null;
+
+    const texture = source.clone();
+    texture.repeat.set(
+      WORLD.PANEL_WIDTH / SURFACE.TILE_METERS,
+      WORLD.WALL_HEIGHT / SURFACE.TILE_METERS,
+    );
+    texture.offset.set(
+      (this.index * WORLD.PANEL_WIDTH) / SURFACE.TILE_METERS,
+      0,
+    );
+    texture.needsUpdate = true;
+    return texture;
+  }
+
+  /**
+   * Tiles the wall photograph into the canvas as the base coat.
+   *
+   * One tile covers SURFACE.TILE_METERS of wall whatever the file's pixel size,
+   * so brick stays brick-sized if the texture resolution or the panel changes.
+   * The horizontal shift is where this panel sits along the strip, so courses
+   * run straight through the seam instead of restarting at every panel.
+   */
+  private tilePhoto(image: HTMLImageElement) {
+    const { ctx } = this;
+    const pattern = ctx.createPattern(image, "repeat");
+    if (!pattern) return false;
+
+    const scale = (SURFACE.TILE_METERS * TEXTURE.PIXELS_PER_METER) / image.width;
+    const shift = -this.index * PANEL_TEXTURE_WIDTH;
+
+    pattern.setTransform(new DOMMatrix().translate(shift, 0).scale(scale, scale));
+    ctx.fillStyle = pattern;
+    ctx.fillRect(0, 0, PANEL_TEXTURE_WIDTH, PANEL_TEXTURE_HEIGHT);
+    return true;
+  }
+
+  /**
+   * The base coat under the paint: a wall photograph if one was supplied,
+   * procedural concrete otherwise.
+   *
+   * Also used by reset and journal replay, so the variation is seeded from the
+   * panel id — a random base would visibly reshuffle every time an undo
+   * repaints the panel.
    */
   paintBase() {
     const { ctx } = this;
@@ -87,22 +144,31 @@ export class WallPanel {
     const random = createRandom(0x9e3779b9 ^ this.id);
 
     ctx.globalAlpha = 1;
-    ctx.fillStyle = TEXTURE.BASE_COLOR;
-    ctx.fillRect(0, 0, w, h);
 
-    // Concrete grain
-    const img = ctx.getImageData(0, 0, w, h);
-    const data = img.data;
-    for (let i = 0; i < data.length; i += 4) {
-      const n = (random() - 0.5) * 255 * TEXTURE.NOISE_AMOUNT;
-      data[i] += n;
-      data[i + 1] += n;
-      data[i + 2] += n;
+    const photographed = this.surface.albedo
+      ? this.tilePhoto(this.surface.albedo)
+      : false;
+
+    if (!photographed) {
+      ctx.fillStyle = TEXTURE.BASE_COLOR;
+      ctx.fillRect(0, 0, w, h);
+
+      // Concrete grain. Skipped over a photograph, which already has its own —
+      // and this per-pixel pass is the slowest thing in start-up.
+      const img = ctx.getImageData(0, 0, w, h);
+      const data = img.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const n = (random() - 0.5) * 255 * TEXTURE.NOISE_AMOUNT;
+        data[i] += n;
+        data[i + 1] += n;
+        data[i + 2] += n;
+      }
+      ctx.putImageData(img, 0, 0);
     }
-    ctx.putImageData(img, 0, 0);
 
-    // Damp patches, so the surface does not read as flat
-    ctx.globalAlpha = 0.05;
+    // Damp patches, so the surface does not read as flat — and so two panels
+    // sharing one tiled photograph do not read as clones of each other.
+    ctx.globalAlpha = photographed ? SURFACE.GRUNGE_ALPHA : 0.05;
     for (let i = 0; i < 12; i++) {
       const x = random() * w;
       const y = random() * h;
@@ -125,7 +191,10 @@ export class WallPanel {
   /** The JS garbage collector does not free GPU resources — call this by hand. */
   dispose() {
     this.texture.dispose();
+    const material = this.mesh.material as THREE.MeshStandardMaterial;
+    material.normalMap?.dispose();
+    material.roughnessMap?.dispose();
+    material.dispose();
     this.mesh.geometry.dispose();
-    (this.mesh.material as THREE.Material).dispose();
   }
 }

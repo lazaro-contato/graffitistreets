@@ -52,6 +52,26 @@ export const TEXTURE = {
   NOISE_AMOUNT: 0.06,
 } as const;
 
+/**
+ * Optional wall photography, dropped into `public/wall/`.
+ *
+ * The albedo is NOT a material map: the panel canvas is the colour texture,
+ * because paint is drawn on top of it, so the photo is tiled into that canvas
+ * as the base coat. Normal and roughness never get painted, so those go on the
+ * material and are shared between panels.
+ *
+ * Any file that is missing simply falls back to the procedural concrete.
+ */
+export const SURFACE = {
+  ALBEDO: "/wall/albedo.jpg",
+  NORMAL: "/wall/normal.jpg", // OpenGL convention (green up), not DirectX
+  ROUGHNESS: "/wall/roughness.jpg",
+  /** How much wall one tile of those images covers. Keeps brick brick-sized. */
+  TILE_METERS: 2,
+  /** Damp patches kept over the photo, so panels do not read as clones. */
+  GRUNGE_ALPHA: 0.04,
+} as const;
+
 /** Canvas size of one panel, in pixels. */
 export const PANEL_TEXTURE_WIDTH =
   WORLD.PANEL_WIDTH * TEXTURE.PIXELS_PER_METER;

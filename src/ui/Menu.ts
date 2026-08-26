@@ -1,6 +1,9 @@
 import { MOVEMENT_MODES, type MovementMode } from "../config";
 
-export type MenuScreen = "main" | "controls" | "pause";
+export type MenuScreen = "main" | "modes" | "controls" | "pause";
+
+/** Screens reached from another one, which a Back has to return from. */
+const SUB_SCREENS = new Set<MenuScreen>(["modes", "controls"]);
 
 export type MenuHandlers = {
   onPlay: () => void;
@@ -76,7 +79,7 @@ export class Menu {
   constructor(private handlers: MenuHandlers) {
     this.root = document.getElementById("menu")!;
 
-    for (const screen of ["main", "controls", "pause"] as const) {
+    for (const screen of ["main", "modes", "controls", "pause"] as const) {
       this.screens.set(
         screen,
         this.root.querySelector<HTMLElement>(`[data-screen="${screen}"]`)!,
@@ -93,7 +96,8 @@ export class Menu {
         ?.dataset.action;
       if (!action) return;
 
-      if (action === "play") this.handlers.onPlay();
+      // Play does not start anything: it asks how you want to move first.
+      if (action === "play") this.show("modes");
       else if (action === "resume") this.handlers.onResume();
       else if (action === "quit") this.handlers.onQuit();
       else if (action === "controls") this.show("controls");
@@ -111,10 +115,10 @@ export class Menu {
     for (const option of MOVEMENT_MODES) {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "menu-choice";
+      button.className = "mode-card";
       button.innerHTML =
         `<strong>${option.label}</strong><span>${option.hint}</span>`;
-      button.addEventListener("click", () => this.setMode(option.id));
+      button.addEventListener("click", () => this.pick(option.id));
       this.modeButtons.set(option.id, button);
       host.appendChild(button);
     }
@@ -122,9 +126,11 @@ export class Menu {
     this.syncMode();
   }
 
-  private setMode(mode: MovementMode) {
+  /** A mode card is the play button: it picks the mode and goes straight in. */
+  private pick(mode: MovementMode) {
     this.mode = mode;
     this.syncMode();
+    this.handlers.onPlay();
   }
 
   private syncMode() {
@@ -153,14 +159,16 @@ export class Menu {
   }
 
   show(screen: MenuScreen) {
-    // Remember where the controls sheet was opened from, so Back is honest
-    // whether it came from the main menu or from a pause.
-    if (screen === "controls" && this.current && this.current !== "controls") {
+    // Remember where a sub-screen was opened from, so Back is honest whether
+    // it came from the main menu or from a pause.
+    if (SUB_SCREENS.has(screen) && this.current && !SUB_SCREENS.has(this.current)) {
       this.returnTo = this.current;
     }
 
     this.current = screen;
     this.root.hidden = false;
+    // Exposed so the stylesheet can widen the column for the controls sheet.
+    this.root.dataset.screen = screen;
     // The artwork belongs to the front door. Once the player is in and has
     // paused, the street behind the scrim is the better backdrop — and the
     // controls sheet keeps whichever of the two it was opened over.

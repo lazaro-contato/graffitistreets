@@ -3,6 +3,7 @@ import { Loop } from "./core/Loop";
 import { Input } from "./core/Input";
 import { buildStreet } from "./world/Street";
 import { WallSystem } from "./world/WallSystem";
+import { loadWallSurface } from "./world/WallSurface";
 import { Player } from "./player/Player";
 import { SprayCan } from "./paint/SprayCan";
 import { Aim } from "./paint/Aim";
@@ -14,10 +15,13 @@ import { buildHud } from "./ui/Hud";
 import { SprayCursor } from "./ui/SprayCursor";
 import { Inventory } from "./ui/Inventory";
 import { Menu, MENU_ART, type MenuScreen } from "./ui/Menu";
+import { LoadingScreen } from "./ui/Loading";
 
 const canvas = document.getElementById("app") as HTMLCanvasElement;
 const hud = document.getElementById("hud")!;
-const loading = document.getElementById("loading")!;
+// Six counted steps: three wall files, the world itself, the menu artwork and
+// the display face. Counted rather than estimated, so the bar tells the truth.
+const loading = new LoadingScreen(6);
 
 const engine = new Engine(canvas);
 const loop = new Loop();
@@ -25,8 +29,17 @@ const input = new Input(canvas);
 
 buildStreet(engine.scene);
 
-const walls = new WallSystem();
+// Awaited before the walls exist, because the photograph is tiled into each
+// panel canvas as its base coat — there is no adding it afterwards without
+// repainting every panel. The loading screen is already up, in the markup.
+const surface = await loadWallSurface(() => loading.advance());
+await loading.breathe();
+
+// Building the panels blocks the main thread, so let the bar paint first.
+const walls = new WallSystem(surface);
 engine.scene.add(walls.group);
+loading.advance();
+await loading.breathe();
 
 const player = new Player(engine.camera, input, canvas);
 const can = new SprayCan();
@@ -68,7 +81,7 @@ buildHud(can, () => player.controls.isLocked);
 const menu = new Menu({
   onPlay: () => {
     player.setMode(menu.mode);
-    enterStreet("main");
+    enterStreet("modes");
   },
   onResume: () => enterStreet("pause"),
   onQuit: () => menu.show("main"),
@@ -140,7 +153,7 @@ window.addEventListener("keydown", (e) => {
   // Escape while locked is the browser's to handle: it drops the lock and the
   // unlock listener above brings up the pause screen.
   if (inventory.isOpen) closeBackpack();
-  else if (menu.current === "controls") menu.back();
+  else if (menu.current === "controls" || menu.current === "modes") menu.back();
   else if (menu.current === "pause") enterStreet("pause");
 });
 
@@ -155,10 +168,13 @@ async function waitForFrontDoor() {
   const art = new Image();
   art.src = MENU_ART;
 
+  const counted = (pending: Promise<unknown>) =>
+    pending.finally(() => loading.advance());
+
   await Promise.race([
     Promise.allSettled([
-      art.decode(),
-      document.fonts.load('1rem "Sedgwick Ave Display"'),
+      counted(art.decode()),
+      counted(document.fonts.load('1rem "Aldrich"')),
     ]),
     new Promise((resolve) => window.setTimeout(resolve, 6000)),
   ]);
@@ -166,8 +182,7 @@ async function waitForFrontDoor() {
 
 await waitForFrontDoor();
 menu.show("main");
-loading.classList.add("done");
-window.setTimeout(() => loading.remove(), 400);
+await loading.finish();
 
 // Order matters: move, aim, paint, then flush, then render. Aim runs before
 // paint so both the spray and the cursor act on the same frame's raycast, and

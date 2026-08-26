@@ -294,6 +294,29 @@ showing exactly when the spray would mark the wall.
 
 ---
 
+## Wall surface
+
+`public/wall/` optionally holds `albedo.jpg`, `normal.jpg` and `roughness.jpg`.
+Any that are missing fall back to the procedural concrete, silently.
+
+The albedo is **not** a material map. A panel's canvas is its colour texture,
+because paint is drawn onto it, so the photograph is tiled into that canvas as
+the base coat inside `paintBase()`. Normal and roughness never get painted, so
+those ride on the material.
+
+Both paths tile from the same origin — the start of the **strip**, not of each
+panel — so courses run straight through a seam instead of restarting at every
+panel. That means two different offset conventions have to agree: a canvas
+pattern transform in pixels, and a UV `offset`/`repeat` in tile units.
+Verified: they land on the same tile number at every sampled point.
+
+One tile covers `SURFACE.TILE_METERS` of wall whatever the file's pixel size,
+so brick stays brick-sized if the texture resolution or the panel size changes.
+At 192 px/m a 2 m tile draws at 384 px, so 1K source files are already
+oversized.
+
+---
+
 ## Strips, not panels
 
 A wall side is **one continuous paint surface** (`WallStrip`). It is cut into

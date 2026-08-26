@@ -1,6 +1,7 @@
 import type * as THREE from "three";
 import { WallPanel } from "./WallPanel";
 import { PANELS_PER_SIDE, PANEL_TEXTURE_WIDTH, type Side } from "../config";
+import { BARE_WALL, type WallSurface } from "./WallSurface";
 
 /**
  * One side of the street, treated as a single continuous paint surface.
@@ -20,9 +21,10 @@ export class WallStrip {
     readonly side: Side,
     firstPanelId: number,
     group: THREE.Group,
+    surface: WallSurface = BARE_WALL,
   ) {
     for (let i = 0; i < PANELS_PER_SIDE; i++) {
-      const panel = new WallPanel(firstPanelId + i, side, i);
+      const panel = new WallPanel(firstPanelId + i, side, i, surface);
       this.panels.push(panel);
       group.add(panel.mesh);
     }

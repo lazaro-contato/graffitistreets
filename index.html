@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Sedgwick+Ave+Display&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Aldrich&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/src/ui/styles.css" />
@@ -19,24 +19,28 @@
     <canvas id="app"></canvas>
 
     <div id="loading">
-      <div class="spinner"></div>
+      <img src="/loading.webp" alt="" />
+      <div id="loading-track"><div id="loading-bar"></div></div>
     </div>
 
     <div id="menu">
       <div class="panel">
         <section class="screen" data-screen="main">
           <h1>Graffiti Center</h1>
+          <p class="kicker">// pegue sua lata</p>
           <button class="menu-item" data-action="play" type="button">
             Jogar
           </button>
-
-          <div class="menu-group">
-            <p class="menu-group-label">Configurações</p>
-            <div class="menu-choices" id="mode-choices"></div>
-          </div>
-
-          <button class="menu-item ghost" data-action="controls" type="button">
+          <button class="menu-item" data-action="controls" type="button">
             Controles
+          </button>
+        </section>
+
+        <section class="screen" data-screen="modes" hidden>
+          <p class="kicker">// como você vai andar</p>
+          <div class="mode-cards" id="mode-choices"></div>
+          <button class="menu-link" data-action="back" type="button">
+            Voltar
           </button>
         </section>
 
