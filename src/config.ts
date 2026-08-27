@@ -219,6 +219,26 @@ export const ADS = {
 } as const;
 
 /**
+ * The one event the game reports about itself.
+ *
+ * The tracker is loaded from a script tag in the page, not from here — the
+ * website id belongs next to the tag that needs it, and a pageview should not
+ * depend on the bundle parsing. Umami already knows the visit, the country and
+ * the language. What it cannot know is how much of a visit was spent in the
+ * street rather than in a menu, and how much paint reached the wall.
+ */
+export const ANALYTICS = {
+  /** What the event is called in the dashboard. */
+  EVENT: "session",
+  /**
+   * Visits shorter than this go unreported. A bounce is already counted as a
+   * pageview; folding it into the session numbers would only drag every
+   * average toward zero and make the real visits harder to see.
+   */
+  MIN_VISIT_MS: 5000,
+} as const;
+
+/**
  * How the spray decides its own width.
  *
  * `auto` is the can: the cone opens as you back away from the wall, and the

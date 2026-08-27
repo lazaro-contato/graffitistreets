@@ -113,8 +113,8 @@ transport.onMessage((message) => {
 
 buildHud(can, () => player.controls.isLocked);
 
-// Times the visit and queues the result in localStorage. Nothing is posted
-// anywhere yet — the queue is drained once there is a server to drain it to.
+// Times the visit and reports it to Umami as the page goes away — how long the
+// street held someone, and how much paint they left on it.
 const session = new Session();
 
 // P takes a photo. The same PNG is what the gallery will submit later.
