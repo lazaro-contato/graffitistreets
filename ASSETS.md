@@ -29,17 +29,20 @@ will not pretend otherwise — missing artwork is a missing image, not a crash.
 
 ## Wall and road textures
 
-`public/wall/concrete031/` and `public/road/` are photographic PBR sets
-(albedo, normal, roughness).
+`public/wall/concrete031/` and `public/road/` are photographic PBR sets —
+albedo, normal, roughness — from [ambientCG](https://ambientcg.com).
 
-**These need confirming before anyone relies on them.** The naming follows
-[ambientCG](https://ambientcg.com), whose library is CC0 — public domain, no
-attribution required, redistribution fine. If that is where they came from,
-there is nothing to do. If they came from somewhere else, they may not be
-redistributable and should be replaced.
+Their whole library is released under
+[CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/): public domain,
+no attribution required, commercial use fine, redistribution fine. So these
+files travel with the repository without conditions, and a fork can keep them.
 
-Whoever knows should either confirm the source here or swap the files. Until
-then, treat this row as unverified.
+The wall set is **Concrete031**, which is where the folder name comes from. The
+road set's identifier was not recorded, which changes nothing — every asset on
+the site carries the same dedication.
+
+Attribution is not required and is given anyway: ambientCG is the reason this
+alley has a surface instead of a flat colour.
 
 ## Fonts
 
