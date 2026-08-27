@@ -1,0 +1,20 @@
+name: Idea
+description: Something that could exist and does not
+labels: [idea]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: What it would let someone do
+      description: >
+        The thing an idea is easiest to judge on. A feature that makes painting
+        feel better is worth more here than one that adds a number to a screen.
+    validations:
+      required: true

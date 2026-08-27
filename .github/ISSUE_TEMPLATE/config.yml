@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Play it
+    url: https://graffiti-streets.com
+    about: The running version, if you got here before trying it.
+  - name: Send a piece to the gallery
+    url: https://graffiti-streets.com/gallery/
+    about: Painted something good? The gallery takes submissions.

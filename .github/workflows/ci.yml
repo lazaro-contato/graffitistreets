@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same branch makes the first run pointless. Cancel it
+# rather than pay for both and read the stale one by mistake.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # ci rather than install: it installs exactly what the lockfile says and
+      # fails if package.json and the lockfile disagree, which is the whole
+      # point of running this on somebody else's machine.
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      # Deliberately with no environment configured. The build has to survive a
+      # checkout that knows nothing — that is what a contributor gets, and if
+      # it only works with secrets present, it is broken for everyone else.
+      - run: npm run build

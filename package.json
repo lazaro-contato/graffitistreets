@@ -2,6 +2,17 @@
   "name": "graffiti-streets",
   "private": true,
   "version": "0.1.0",
+  "description": "A short alley, two walls and a spray can. Paint graffiti in the browser.",
+  "license": "AGPL-3.0-or-later",
+  "author": "José Lázaro",
+  "homepage": "https://graffiti-streets.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lazaro-contato/graffitistreets.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lazaro-contato/graffitistreets/issues"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

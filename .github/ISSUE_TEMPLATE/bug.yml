@@ -1,0 +1,43 @@
+name: Bug
+description: Something behaves in a way it should not
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. The most useful bug report is one somebody
+        else can reproduce, so the questions below are all really the same
+        question: what did you do, and what happened?
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: And what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to reproduce it
+      placeholder: |
+        1. Pick free flight
+        2. Fly to the far wall and spray while moving
+        3. The stroke breaks at the seam
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and operating system
+      placeholder: Firefox 133 on Windows 11
+    validations:
+      required: true
+
+  - type: textarea
+    id: shot
+    attributes:
+      label: A screenshot, if it is something you can see
+      description: Press P in game and drag the file in here.
