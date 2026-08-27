@@ -6,7 +6,7 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, user-scalable=no"
+      content="width=device-width, initial-scale=1.0"
     />
 
     <title>Graffiti Streets</title>
@@ -101,6 +101,23 @@
     <canvas id="app"></canvas>
 
     <div id="flash"></div>
+
+    <!-- The door, closed. Shown by CSS alone on a coarse pointer, so a phone
+         never gets as far as the loading bar for a game it cannot run; boot.ts
+         makes the same call before it fetches the game at all. -->
+    <div id="unsupported">
+      <img id="unsupported-shark" src="/shark.webp" alt="" />
+      <h1 data-i18n="mobile.title">Isso aqui pede um computador</h1>
+      <p data-i18n="mobile.body">
+        Graffiti Streets se joga com mouse e teclado: o mouse mira a lata, o
+        teclado te leva pela rua. Num celular não tem como.
+      </p>
+      <p class="aside" data-i18n="mobile.aside">
+        Volte de um computador que o muro fica te esperando. Enquanto isso,
+        veja o que já pintaram por aí.
+      </p>
+      <a class="cta" href="/gallery/" data-i18n="mobile.cta">Ver a galeria</a>
+    </div>
 
     <div id="loading">
       <img src="/main-loading.webp" alt="" />
@@ -290,6 +307,6 @@
       </div>
     </div>
 
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/boot.ts"></script>
   </body>
 </html>

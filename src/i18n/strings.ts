@@ -34,6 +34,11 @@ export const STRINGS: Record<Locale, Record<string, string>> = {
     "gallery.download": "Baixar",
     "gallery.share": "Compartilhar",
     "gallery.copied": "Link copiado",
+
+    "mobile.title": "Isso aqui pede um computador",
+    "mobile.body": "Graffiti Streets se joga com mouse e teclado: o mouse mira a lata, o teclado te leva pela rua. Num celular não tem como.",
+    "mobile.aside": "Volte de um computador que o muro fica te esperando. Enquanto isso, veja o que já pintaram por aí.",
+    "mobile.cta": "Ver a galeria",
     "menu.kicker.brush": "// tamanho do pincel",
     "brush.auto.label": "Automático",
     "brush.auto.hint": "O jato abre conforme você se afasta do muro, e a tinta afina junto",
@@ -130,6 +135,11 @@ export const STRINGS: Record<Locale, Record<string, string>> = {
     "gallery.download": "Download",
     "gallery.share": "Share",
     "gallery.copied": "Link copied",
+
+    "mobile.title": "This one needs a computer",
+    "mobile.body": "Graffiti Streets is played with a mouse and a keyboard: the mouse aims the can, the keyboard walks you down the street. A phone has neither.",
+    "mobile.aside": "Come back from a desktop — the wall will keep. In the meantime, see what people have painted.",
+    "mobile.cta": "See the gallery",
     "menu.kicker.brush": "// brush size",
     "brush.auto.label": "Automatic",
     "brush.auto.hint": "The cone opens as you back away, and the paint thins with it",

@@ -10,15 +10,25 @@
   display: none !important;
 }
 
-/* The same street the loading screen uses, blurred and pinned, so scrolling
-   the gallery does not drag the wall along with it. */
+/* The same street the loading screen uses, pinned so scrolling the gallery
+   does not drag the wall along with it. dvh rather than vh: on a phone the
+   address bar slides away and vh keeps measuring as though it had not. */
 body {
-  min-height: 100vh;
-  background:
-    linear-gradient(rgba(6, 8, 12, 0.9), rgba(6, 8, 12, 0.96)),
-    url("/loading-bg.jpg") center / cover no-repeat fixed;
+  min-height: 100dvh;
   color: #f2f2f2;
   font-family: system-ui, sans-serif;
+}
+
+/* A fixed layer of its own rather than `background-attachment: fixed`, which
+   iOS Safari scales wrongly and jerks around as the address bar hides. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(rgba(6, 8, 12, 0.9), rgba(6, 8, 12, 0.96)),
+    url("/loading-bg.jpg") center / cover no-repeat;
 }
 
 /* Header ------------------------------------------------------------- */
@@ -61,9 +71,11 @@ body {
     background 0.12s ease;
 }
 
-.icon-link:hover {
-  color: var(--neon);
-  background: rgba(255, 255, 255, 0.07);
+@media (hover: hover) {
+  .icon-link:hover {
+    color: var(--neon);
+    background: rgba(255, 255, 255, 0.07);
+  }
 }
 
 .icon-link svg {
@@ -86,8 +98,10 @@ body {
   transition: filter 0.12s ease;
 }
 
-.cta:hover {
-  filter: brightness(1.15);
+@media (hover: hover) {
+  .cta:hover {
+    filter: brightness(1.15);
+  }
 }
 
 /* Page ---------------------------------------------------------------- */
@@ -153,13 +167,15 @@ main h1 {
 
 /* Lift and a neon edge, nothing else. Pushing the other pieces out of focus
    was tried and read as the page glitching rather than as depth. */
-.piece:hover,
-.piece:focus-visible {
-  transform: translateY(-0.4rem) scale(1.015);
-  box-shadow:
-    0 1.4rem 2.6rem rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(57, 255, 20, 0.4);
-  outline: none;
+@media (hover: hover) {
+  .piece:hover,
+  .piece:focus-visible {
+    transform: translateY(-0.4rem) scale(1.015);
+    box-shadow:
+      0 1.4rem 2.6rem rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(57, 255, 20, 0.4);
+    outline: none;
+  }
 }
 
 /* Viewer -------------------------------------------------------------- */
@@ -209,10 +225,12 @@ main h1 {
   color: #f2f2f2;
 }
 
-.cta.ghost:hover {
-  border-color: var(--neon);
-  color: var(--neon);
-  filter: none;
+@media (hover: hover) {
+  .cta.ghost:hover {
+    border-color: var(--neon);
+    color: var(--neon);
+    filter: none;
+  }
 }
 
 .viewer .cta {
@@ -237,8 +255,10 @@ main h1 {
   transition: background 0.12s ease;
 }
 
-.viewer-close:hover {
-  background: rgba(255, 255, 255, 0.18);
+@media (hover: hover) {
+  .viewer-close:hover {
+    background: rgba(255, 255, 255, 0.18);
+  }
 }
 
 /* Anyone who asked the system to calm animations down gets the edge without
@@ -251,5 +271,51 @@ main h1 {
   .piece:hover,
   .piece:focus-visible {
     transform: none;
+  }
+}
+
+/* Narrow screens -------------------------------------------------------- */
+
+/* The masonry needs nothing here: `columns: 22rem` is a minimum width, so a
+   phone resolves it to a single column on its own. What does not survive is
+   the header — the brand and a button that refuses to wrap — and the viewer,
+   whose close button sits exactly where the picture wants to be. */
+@media (max-width: 34rem) {
+  .bar {
+    gap: 0.5rem;
+    padding: 0.5rem 0.85rem;
+  }
+
+  .brand img {
+    height: 2.1rem;
+  }
+
+  .cta {
+    margin-left: 0;
+    padding: 0.55rem 0.9rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+  }
+
+  /* Room at the top for the close button to sit above the picture rather than
+     on it, and room at the bottom for the home indicator. */
+  .viewer {
+    gap: 0.9rem;
+    padding: 3.6rem 0.75rem calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  .viewer-actions {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* 2.75rem is 44px, which is the smallest thing a fingertip reliably hits. */
+  .viewer-close {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .viewer .cta {
+    padding: 0.7rem 1.2rem;
   }
 }

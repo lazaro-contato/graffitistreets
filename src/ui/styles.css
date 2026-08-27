@@ -783,3 +783,106 @@ button.cap-slot[aria-pressed="true"] .cap-art svg path {
   font-size: 0.8rem;
   opacity: 0.4;
 }
+
+/* The closed door ------------------------------------------------------- */
+
+/* In the markup rather than built by script, so it lands with the page before
+   any bundle has parsed. A phone should never watch a loading bar fill for a
+   game that is not coming.
+
+   Everything but `display` is set here, unconditionally, so the two switches
+   below stay one line each and cannot drift apart. */
+#unsupported {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+  overflow-y: auto;
+  padding: 2rem 1.5rem calc(2rem + env(safe-area-inset-bottom));
+  text-align: center;
+  background:
+    linear-gradient(rgba(6, 8, 12, 0.88), rgba(6, 8, 12, 0.95)),
+    url("/loading-bg.jpg") center / cover no-repeat;
+  color: #f2f2f2;
+}
+
+/* Centred by auto margins on the first and last child rather than by
+   justify-content: a centred flex line cannot be scrolled back into view once
+   it overflows, and a phone held sideways is exactly short enough for that. */
+#unsupported-shark {
+  margin-top: auto;
+  width: min(14rem, 46vw);
+  animation: drift 6s ease-in-out infinite;
+}
+
+#unsupported h1 {
+  font-family: var(--display);
+  font-size: clamp(1.4rem, 6vw, 2rem);
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+#unsupported p {
+  max-width: 26rem;
+  line-height: 1.6;
+  opacity: 0.72;
+}
+
+#unsupported .aside {
+  font-size: 0.9rem;
+  opacity: 0.5;
+}
+
+#unsupported .cta {
+  margin-top: 0.6rem;
+  margin-bottom: auto;
+  /* Sized for a fingertip rather than a cursor. */
+  padding: 0.85rem 1.7rem;
+  font-size: 0.9rem;
+}
+
+/* A finger cannot lock a pointer and cannot walk a street, so the test is the
+   pointer rather than the screen width — a narrow window on a laptop still
+   plays, and a touchscreen laptop reports a fine primary pointer.
+
+   Two switches for one decision. This one is CSS, so it applies while the HTML
+   is still parsing and no loading bar is ever seen. The second is the same
+   test in boot.ts, which sets data-unsupported on <html> before it decides
+   whether to fetch the renderer — it costs six lines and means a browser that
+   mishandles the query still closes the door rather than opening a game it
+   cannot run. */
+@media (pointer: coarse) and (hover: none) {
+  #app,
+  #flash,
+  #loading,
+  #menu,
+  #hud,
+  #inventory {
+    display: none !important;
+  }
+
+  #unsupported {
+    display: flex;
+  }
+}
+
+html[data-unsupported] :is(#app, #flash, #loading, #menu, #hud, #inventory) {
+  display: none !important;
+}
+
+html[data-unsupported] #unsupported {
+  display: flex;
+}
+
+/* Both sharks drift. Anyone who asked the system to calm animations down gets
+   them still. */
+@media (prefers-reduced-motion: reduce) {
+  #menu-shark,
+  #unsupported-shark {
+    animation: none;
+  }
+}
