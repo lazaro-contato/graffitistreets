@@ -265,7 +265,11 @@ export const LINKS = {
    */
   SOCIAL: false,
 
+  /** The repository. Where the bug link goes, and only useful while public. */
   GITHUB: "https://github.com/lazaro-contato/graffitistreets",
+  /** The person. What the corner icon points at — that one is "who made this",
+      not "here is the source". */
+  GITHUB_PROFILE: "https://github.com/lazaro-contato",
   /** Replace with the real profile before switching SOCIAL back on. */
   LINKEDIN: "https://www.linkedin.com/in/",
 

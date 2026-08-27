@@ -23,7 +23,7 @@ import { Menu, MENU_ART, type MenuScreen } from "./ui/Menu";
 import { LoadingScreen } from "./ui/Loading";
 import { buildPhoto } from "./ui/Photo";
 import { BackpackHint } from "./ui/Hint";
-import { GITHUB_ICON, LINKEDIN_ICON } from "./ui/Icons";
+import { GITHUB_ICON } from "./ui/Icons";
 import { Session } from "./telemetry/Session";
 import {
   apply as applyLocale,
@@ -149,19 +149,9 @@ if (LINKS.AUTHOR) {
   credits.hidden = false;
 }
 
-// Hidden in the markup and only filled in when the flag says so, so a
-// half-wired icon can never show up with a dead href.
-if (LINKS.SOCIAL) {
-  for (const [id, href, icon] of [
-    ["menu-github", LINKS.GITHUB, GITHUB_ICON],
-    ["menu-linkedin", LINKS.LINKEDIN, LINKEDIN_ICON],
-  ] as const) {
-    const anchor = document.getElementById(id) as HTMLAnchorElement;
-    anchor.href = href;
-    anchor.innerHTML = icon;
-    anchor.hidden = false;
-  }
-}
+const github = document.getElementById("menu-github") as HTMLAnchorElement;
+github.href = LINKS.GITHUB_PROFILE;
+github.innerHTML = GITHUB_ICON;
 
 /**
  * Asks for the pointer back.
