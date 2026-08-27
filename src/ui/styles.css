@@ -919,6 +919,12 @@ html[data-unsupported] #unsupported {
   position: absolute;
   top: 1.25rem;
   right: 1.25rem;
+  /* The photograph behind it runs from lit brick to deep shadow, and a white
+     glyph at 62% disappears into the bright half. A dark pad of its own means
+     it reads the same wherever the corner happens to land. */
+  background: rgba(6, 8, 12, 0.42);
+  backdrop-filter: blur(4px);
+  color: rgba(255, 255, 255, 0.82);
 }
 
 /* It belongs to the front door, like the shark and the row below it */
