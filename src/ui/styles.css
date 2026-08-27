@@ -891,3 +891,24 @@ html[data-unsupported] #unsupported {
     animation: none;
   }
 }
+
+/* Sits beside the send-your-image button, deliberately quieter: the button is
+   an invitation, these two are answers to a question somebody already had. */
+.quiet-link {
+  align-self: center;
+  padding: 0.5rem 0.55rem;
+  color: rgba(255, 255, 255, 0.48);
+  font-family: var(--display);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.12s ease;
+}
+
+.quiet-link:hover,
+.quiet-link:focus-visible {
+  color: var(--neon);
+  outline: none;
+}

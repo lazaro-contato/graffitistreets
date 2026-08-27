@@ -140,6 +140,14 @@ const hint = new BackpackHint();
 
 (document.getElementById("menu-submit") as HTMLAnchorElement).href =
   LINKS.SUBMIT[getLocale()];
+(document.getElementById("menu-bug") as HTMLAnchorElement).href = LINKS.BUG;
+
+// Hidden in the markup until there is somewhere real to send people.
+if (LINKS.AUTHOR) {
+  const credits = document.getElementById("menu-credits") as HTMLAnchorElement;
+  credits.href = LINKS.AUTHOR;
+  credits.hidden = false;
+}
 
 // Hidden in the markup and only filled in when the flag says so, so a
 // half-wired icon can never show up with a dead href.

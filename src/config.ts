@@ -269,6 +269,22 @@ export const LINKS = {
   /** Replace with the real profile before switching SOCIAL back on. */
   LINKEDIN: "https://www.linkedin.com/in/",
 
+  /**
+   * Where a bug goes. The repository is public, so this needs no account of
+   * ours and no inbox to keep — and an issue stays readable by whoever hits
+   * the same thing next, which a private message never does.
+   */
+  BUG: "https://github.com/lazaro-contato/graffitistreets/issues/new",
+
+  /**
+   * The person behind it, for whoever plays and wants to know who made this.
+   *
+   * Null until there is a real profile to point at, and the menu item stays
+   * out of the page while it is — "quem fez" leading nowhere is worse than
+   * not asking the question.
+   */
+  AUTHOR: null as string | null,
+
   GALLERY: "/gallery/",
 
   /**
