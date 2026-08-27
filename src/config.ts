@@ -277,8 +277,13 @@ export const LINKS = {
    * Where a bug goes. The repository is public, so this needs no account of
    * ours and no inbox to keep — and an issue stays readable by whoever hits
    * the same thing next, which a private message never does.
+   *
+   * The list rather than the new-issue form: /issues/new redirects a
+   * signed-out visitor straight to a login page, which is a wall in place of
+   * an answer. The list opens for anyone, shows whether the bug is already
+   * known, and offers its own button to whoever decides to file one.
    */
-  BUG: "https://github.com/lazaro-contato/graffitistreets/issues/new",
+  BUG: "https://github.com/lazaro-contato/graffitistreets/issues",
 
   /**
    * The person behind it, for whoever plays and wants to know who made this.
