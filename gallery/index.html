@@ -85,6 +85,13 @@
         seu muro.
       </p>
 
+      <!-- Up from the start and removed the moment the manifest lands. The
+           fade-in is delayed in CSS rather than timed in script, so a fast
+           load never flashes it and a slow one still says something. -->
+      <div id="loading" class="spinner" role="status">
+        <span class="sr-only" data-i18n="gallery.loading">Carregando as peças…</span>
+      </div>
+
       <!-- Filled by the script from /gallery/index.json -->
       <div id="pieces" class="pieces"></div>
 

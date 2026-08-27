@@ -319,3 +319,69 @@ main h1 {
     padding: 0.7rem 1.2rem;
   }
 }
+
+/* Waiting ---------------------------------------------------------------- */
+
+/* The manifest is under a kilobyte, so on any decent connection it lands
+   before a spinner would mean anything — and a spinner that appears for one
+   frame reads as a glitch. The fade-in carries a delay, so a fast load never
+   shows it at all and only a real wait does. Delaying in CSS rather than with
+   a timer means there is no state to get wrong. */
+.spinner {
+  width: 2.6rem;
+  height: 2.6rem;
+  margin: 5rem auto;
+  border: 3px solid rgba(255, 255, 255, 0.12);
+  border-top-color: var(--neon);
+  border-radius: 50%;
+  animation:
+    spinner-in 0.25s ease 0.3s both,
+    spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@keyframes spinner-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* The label is for a screen reader, which has nothing to read in a rotating
+   border. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Turning is the one thing a spinner does, so it breathes instead. */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation:
+      spinner-in 0.25s ease 0.3s both,
+      spinner-pulse 1.4s ease-in-out infinite;
+    border-color: var(--neon);
+  }
+
+  @keyframes spinner-pulse {
+    0%,
+    100% {
+      opacity: 0.25;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+}

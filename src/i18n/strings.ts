@@ -34,6 +34,7 @@ export const STRINGS: Record<Locale, Record<string, string>> = {
     "gallery.download": "Baixar",
     "gallery.share": "Compartilhar",
     "gallery.copied": "Link copiado",
+    "gallery.loading": "Carregando as peças…",
 
     "mobile.title": "Isso aqui pede um computador",
     "mobile.body": "Graffiti Streets se joga com mouse e teclado: o mouse mira a lata, o teclado te leva pela rua. Num celular não tem como.",
@@ -135,6 +136,7 @@ export const STRINGS: Record<Locale, Record<string, string>> = {
     "gallery.download": "Download",
     "gallery.share": "Share",
     "gallery.copied": "Link copied",
+    "gallery.loading": "Loading the pieces…",
 
     "mobile.title": "This one needs a computer",
     "mobile.body": "Graffiti Streets is played with a mouse and a keyboard: the mouse aims the can, the keyboard walks you down the street. A phone has neither.",

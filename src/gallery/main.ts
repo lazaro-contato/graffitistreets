@@ -153,6 +153,9 @@ async function start() {
     .then((data) => (data?.pieces as Piece[]) ?? [])
     .catch(() => [] as Piece[]);
 
+  // Gone either way: a manifest that arrived, and one that never did and left
+  // the empty state to explain itself.
+  document.getElementById("loading")?.remove();
   render(pieces, buildViewer());
 }
 
