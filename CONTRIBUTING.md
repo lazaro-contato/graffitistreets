@@ -58,6 +58,24 @@ ui/ → paint/, player/ → world/, state/, net/ → core/, config
 
 Never import upwards.
 
+## The skills folder
+
+`.claude/skills/` holds four short documents about this codebase. They exist
+for coding agents, but they are worth reading whoever you are — they are the
+conventions above with the reasons attached, and each one is built out of a bug
+this project actually had.
+
+| Skill | Read it before |
+| --- | --- |
+| `walls-and-strokes` | touching anything that paints, erases, undoes or draws |
+| `add-a-cap` | adding or changing anything in the backpack |
+| `add-a-map` | changing the arena or adding a second scene |
+| `verify-a-change` | calling any non-trivial change done |
+
+If you change how something works, change the skill that describes it in the
+same pull request. A skill that has drifted from the code is worse than no
+skill, because it is believed.
+
 ## Comments
 
 Comments explain **why**, not what. The code already says what it does; what it
