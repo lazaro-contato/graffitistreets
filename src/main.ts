@@ -23,7 +23,7 @@ import { Menu, MENU_ART, type MenuScreen } from "./ui/Menu";
 import { LoadingScreen } from "./ui/Loading";
 import { buildPhoto } from "./ui/Photo";
 import { BackpackHint } from "./ui/Hint";
-import { LINKEDIN_ICON } from "./ui/Icons";
+import { LINKEDIN_ICON, X_ICON } from "./ui/Icons";
 import { Session } from "./telemetry/Session";
 import {
   apply as applyLocale,
@@ -142,9 +142,14 @@ const hint = new BackpackHint();
   LINKS.SUBMIT[getLocale()];
 (document.getElementById("menu-bug") as HTMLAnchorElement).href = LINKS.BUG;
 
-const linkedin = document.getElementById("menu-linkedin") as HTMLAnchorElement;
-linkedin.href = LINKS.LINKEDIN;
-linkedin.innerHTML = LINKEDIN_ICON;
+for (const [id, href, icon] of [
+  ["menu-linkedin", LINKS.LINKEDIN, LINKEDIN_ICON],
+  ["menu-x", LINKS.X, X_ICON],
+] as const) {
+  const anchor = document.getElementById(id) as HTMLAnchorElement;
+  anchor.href = href;
+  anchor.innerHTML = icon;
+}
 
 /**
  * Asks for the pointer back.

@@ -266,8 +266,9 @@ export const LINKS = {
   SOCIAL: false,
 
   GITHUB: "https://github.com/lazaro-contato/graffitistreets",
-  /** What the corner icon points at: the answer to "who made this". */
+  /** The two corner icons: between them, the answer to "who made this". */
   LINKEDIN: "https://www.linkedin.com/in/lazaro-contato/",
+  X: "https://x.com/lzrodev",
 
   /**
    * Where a bug goes.
