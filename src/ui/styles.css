@@ -91,6 +91,11 @@ body {
 }
 
 #loading img {
+  /* The <picture> around it is only there to keep the sticker off a phone, but
+     it does become a box, and an inline image inside a box sits on a text
+     baseline with the descender space still under it. Blocking the image drops
+     that gap so the sticker lands exactly where it did before. */
+  display: block;
   /* Trimmed to its own bounds, so it is bounded on both axes — a fixed width
      alone would run off a short viewport. */
   max-width: min(30rem, 74vw);

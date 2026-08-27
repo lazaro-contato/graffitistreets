@@ -120,7 +120,21 @@
     </div>
 
     <div id="loading">
-      <img src="/main-loading.webp" alt="" />
+      <!-- 130 kB of sticker that a blocked phone never sees — and a plain
+           <img> is fetched even inside display: none. The condition is the
+           inverse of the one that closes the door: a fine pointer or a real
+           hover means the game is coming and the sticker is wanted. A phone
+           loads the 1×1 below instead. -->
+      <picture>
+        <source
+          media="(pointer: fine), (hover: hover)"
+          srcset="/main-loading.webp"
+        />
+        <img
+          src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=="
+          alt=""
+        />
+      </picture>
       <div id="loading-track"><div id="loading-bar"></div></div>
     </div>
 
