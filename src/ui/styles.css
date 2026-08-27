@@ -1,3 +1,9 @@
+/* Aldrich is a squared-off techno face: it carries headings and menu items,
+   and stays legible small enough for section labels. Body copy still runs on
+   the system font, which reads better in a two-column key list.
+   @import has to precede every rule in the file to be honoured at all. */
+@import "./tokens.css";
+
 * {
   margin: 0;
   padding: 0;
@@ -15,14 +21,6 @@ body {
   overflow: hidden;
   background: #000;
   font-family: system-ui, sans-serif;
-}
-
-/* Aldrich is a squared-off techno face: it carries headings and menu items,
-   and stays legible small enough for section labels. Body copy still runs on
-   the system font, which reads better in a two-column key list. */
-:root {
-  --display: "Aldrich", "Trebuchet MS", system-ui, sans-serif;
-  --neon: #39ff14;
 }
 
 /* Shutter flash for a photo. Sits above the canvas but under every panel, and
@@ -251,6 +249,67 @@ body {
   50% {
     transform: translateY(-1.4rem) rotate(2deg);
   }
+}
+
+/* Bottom-right corner, below the shark rather than behind it. */
+#menu-social {
+  position: absolute;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  display: flex;
+  gap: 0.35rem;
+}
+
+#menu:not([data-screen="main"]) #menu-social {
+  display: none;
+}
+
+.icon-link {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0.45rem;
+  color: rgba(255, 255, 255, 0.55);
+  transition:
+    color 0.12s ease,
+    background 0.12s ease;
+}
+
+.icon-link:hover {
+  color: var(--neon);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.icon-link svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+/* Shares its look with the gallery header's button, deliberately: it is the
+   same action in both places and should not read as two different ones. */
+.cta {
+  padding: 0.5rem 1.1rem;
+  border-radius: 0.45rem;
+  background: var(--neon);
+  color: #080a0d;
+  font-family: var(--display);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: filter 0.12s ease;
+}
+
+.cta:hover {
+  filter: brightness(1.15);
+}
+
+/* The gallery item is a link, so it needs the button's look put back on it */
+a.menu-item {
+  display: block;
+  text-decoration: none;
 }
 
 #menu .panel {

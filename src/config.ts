@@ -235,6 +235,35 @@ export const BRUSH_SIZINGS: readonly { id: BrushSizing }[] = [
 
 export const DEFAULT_BRUSH_SIZING: BrushSizing = "auto";
 
+/** Where the header and the menu send people. */
+export const LINKS = {
+  /**
+   * Off for now. A switch rather than commented-out markup, so the wiring
+   * stays type-checked and turning it back on is one boolean — and so the
+   * elements are hidden by the same flag in both places rather than by two
+   * separate edits that can drift apart.
+   */
+  SOCIAL: false,
+
+  GITHUB: "https://github.com/lazaro-contato/graffitistreets",
+  /** Replace with the real profile before switching SOCIAL back on. */
+  LINKEDIN: "https://www.linkedin.com/in/",
+
+  GALLERY: "/gallery/",
+
+  /**
+   * Where "send your image" goes, one form per language.
+   *
+   * Split because sending an English-speaking player to a Portuguese form at
+   * the exact moment they are trying to hand something over is the easiest
+   * way to lose them.
+   */
+  SUBMIT: {
+    pt: "https://forms.gle/tLMST61YRUSdMnAK9",
+    en: "https://forms.gle/dewxq8uwhR6LXByn8",
+  },
+} as const;
+
 /** Canvas size of one panel, in pixels. */
 export const PANEL_TEXTURE_WIDTH =
   WORLD.PANEL_WIDTH * TEXTURE.PIXELS_PER_METER;

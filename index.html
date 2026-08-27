@@ -102,6 +102,36 @@
     <div id="menu">
       <img id="menu-shark" src="/shark.webp" alt="" />
 
+      <nav id="menu-social">
+        <a
+          class="icon-link"
+          id="menu-github"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="GitHub"
+          hidden
+        ></a>
+        <a
+          class="icon-link"
+          id="menu-linkedin"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="LinkedIn"
+          hidden
+        ></a>
+        <a
+          class="cta"
+          id="menu-submit"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-i18n="gallery.submit"
+          >Envie sua imagem</a
+        >
+      </nav>
+
       <div class="panel">
         <section class="screen" data-screen="main">
           <h1>Graffiti Streets</h1>
@@ -124,6 +154,11 @@
             Controles
           </button>
 
+          <!-- An anchor, not a button: it is a real page, so it should be
+               middle-clickable, bookmarkable and visible to a crawler. -->
+          <a class="menu-item" id="menu-gallery" href="/gallery/"
+            ><span data-i18n="menu.gallery">Galeria</span></a
+          >
           <button
             class="menu-item"
             data-action="settings"

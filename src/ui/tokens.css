@@ -1,0 +1,7 @@
+/* Shared by the game and the gallery. Kept apart from styles.css so the
+   gallery can take the design without also taking 700 lines of HUD. */
+:root {
+  --display: "Aldrich", "Trebuchet MS", system-ui, sans-serif;
+  --neon: #39ff14;
+  --ink: #0a0d14;
+}

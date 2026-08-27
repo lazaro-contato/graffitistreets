@@ -1,0 +1,11 @@
+{
+  "note": "Placeholder tiles, using art the project already ships so the layout can be seen before there are submissions. Empty the list and the page shows its empty state.",
+  "pieces": [
+    { "src": "/menu-bg.jpg", "width": 1920, "height": 1546, "title": "Beco à noite" },
+    { "src": "/shark.webp", "width": 900, "height": 1061, "title": "Tubarão" },
+    { "src": "/og.jpg", "width": 1200, "height": 630, "title": "Graffiti Streets" },
+    { "src": "/loading-bg.jpg", "width": 480, "height": 320, "title": "Muro tagueado" },
+    { "src": "/main-loading.webp", "width": 960, "height": 751, "title": "Placa no prego" },
+    { "src": "/ads/house-pt.jpg", "width": 1024, "height": 512, "title": "Painel" }
+  ]
+}

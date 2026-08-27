@@ -23,13 +23,14 @@ import { Menu, MENU_ART, type MenuScreen } from "./ui/Menu";
 import { LoadingScreen } from "./ui/Loading";
 import { buildPhoto } from "./ui/Photo";
 import { BackpackHint } from "./ui/Hint";
+import { GITHUB_ICON, LINKEDIN_ICON } from "./ui/Icons";
 import { Session } from "./telemetry/Session";
 import {
   apply as applyLocale,
   getLocale,
   onLocaleChange,
 } from "./i18n/i18n";
-import { ADS } from "./config";
+import { ADS, LINKS } from "./config";
 
 const canvas = document.getElementById("app") as HTMLCanvasElement;
 const hud = document.getElementById("hud")!;
@@ -127,15 +128,32 @@ buildPhoto(engine, () => player.controls.isLocked);
 const menu = new Menu({
   onPlay: () => {
     player.setMode(menu.mode);
-    enterStreet("modes");
+    enterStreet();
   },
   onBrushSizing: (sizing) => can.setSizing(sizing),
-  onResume: () => enterStreet("pause"),
+  onResume: () => enterStreet(),
   onQuit: () => menu.show("main"),
 });
 
 const inventory = new Inventory(can, () => closeBackpack());
 const hint = new BackpackHint();
+
+(document.getElementById("menu-submit") as HTMLAnchorElement).href =
+  LINKS.SUBMIT[getLocale()];
+
+// Hidden in the markup and only filled in when the flag says so, so a
+// half-wired icon can never show up with a dead href.
+if (LINKS.SOCIAL) {
+  for (const [id, href, icon] of [
+    ["menu-github", LINKS.GITHUB, GITHUB_ICON],
+    ["menu-linkedin", LINKS.LINKEDIN, LINKEDIN_ICON],
+  ] as const) {
+    const anchor = document.getElementById(id) as HTMLAnchorElement;
+    anchor.href = href;
+    anchor.innerHTML = icon;
+    anchor.hidden = false;
+  }
+}
 
 /**
  * Asks for the pointer back.
@@ -145,17 +163,47 @@ const hint = new BackpackHint();
  * fall back to `refuge` rather than stranding the player with no cursor, no
  * HUD and no way back in.
  */
-function enterStreet(refuge: MenuScreen) {
-  menu.hide();
-  inventory.close();
+/** Between asking for the pointer and finding out whether we got it. */
+let requesting = false;
+/** Where to land if the request is turned down. Usually nowhere. */
+let refuge: MenuScreen | null = null;
+
+/**
+ * Asks for the pointer back.
+ *
+ * Nothing is hidden here, and that is the entire point. Browsers refuse a new
+ * lock for about a second after Escape released the last one, and there is no
+ * way to ask in advance — so hiding first meant the menu vanished, the request
+ * was turned down in silence, and the fallback put it back half a second
+ * later. Pressing Escape to resume therefore looked like the menu flickering
+ * rather than like a refusal.
+ *
+ * The screen now comes down in the `lock` listener, once the pointer really is
+ * ours. A refused request leaves whatever is on screen exactly where it was.
+ *
+ * `onRefusal` covers the one case with nothing left to fall back on: closing
+ * the backpack shuts it before asking, so a refusal there needs a destination.
+ */
+function enterStreet(onRefusal: MenuScreen | null = null) {
+  if (requesting || player.controls.isLocked) return;
+
+  requesting = true;
+  refuge = onRefusal;
   player.controls.lock();
 
+  // Neither event is guaranteed to arrive — an unfocused document can swallow
+  // both — so the flag is cleared on a timer regardless.
   window.setTimeout(() => {
-    if (!player.controls.isLocked && !menu.isOpen && !inventory.isOpen) {
-      menu.show(refuge);
-    }
-  }, 500);
+    requesting = false;
+  }, 2000);
 }
+
+// three listens for this too, but only to log; the recovery has to be ours.
+document.addEventListener("pointerlockerror", () => {
+  requesting = false;
+  if (refuge && !menu.isOpen && !inventory.isOpen) menu.show(refuge);
+  refuge = null;
+});
 
 function openBackpack() {
   if (inventory.isOpen) return;
@@ -167,10 +215,15 @@ function openBackpack() {
 
 function closeBackpack() {
   if (!inventory.isOpen) return;
+  // Shut on the spot: pressing I again has to close it whether or not the
+  // pointer comes back. The refuge covers the case where it does not.
+  inventory.close();
   enterStreet("pause");
 }
 
 player.controls.addEventListener("lock", () => {
+  requesting = false;
+  refuge = null;
   menu.hide();
   inventory.close();
   hud.hidden = false;
@@ -213,7 +266,7 @@ window.addEventListener("keydown", (e) => {
   if (inventory.isOpen) closeBackpack();
   else if (menu.current && menu.current !== "main" && menu.current !== "pause")
     menu.back();
-  else if (menu.current === "pause") enterStreet("pause");
+  else if (menu.current === "pause") enterStreet();
 });
 
 /**

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Galeria — Graffiti Streets</title>
+    <meta
+      name="description"
+      content="Peças pintadas por quem jogou Graffiti Streets. Grafite em 3D no navegador, de graça."
+    />
+    <link rel="canonical" href="https://graffiti-streets.com/gallery/" />
+    <meta name="theme-color" content="#0a0d14" />
+    <meta name="color-scheme" content="dark" />
+
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Graffiti Streets" />
+    <meta property="og:title" content="Galeria — Graffiti Streets" />
+    <meta property="og:url" content="https://graffiti-streets.com/gallery/" />
+    <meta property="og:image" content="https://graffiti-streets.com/og.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Aldrich&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/ui/gallery.css" />
+  </head>
+
+  <body>
+    <header class="bar">
+      <a class="brand" href="/" aria-label="Graffiti Streets">
+        <img src="/main-loading.webp" alt="Graffiti Streets" />
+      </a>
+
+      <nav class="bar-actions">
+        <a
+          class="icon-link"
+          id="bar-github"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="GitHub"
+          hidden
+        ></a>
+        <a
+          class="icon-link"
+          id="bar-linkedin"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="LinkedIn"
+          hidden
+        ></a>
+        <a
+          class="cta"
+          id="bar-submit"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-i18n="gallery.submit"
+          >Envie sua imagem</a
+        >
+      </nav>
+    </header>
+
+    <main>
+      <h1 data-i18n="gallery.title">Galeria</h1>
+      <p class="lede" data-i18n="gallery.lede">
+        Peças pintadas por quem jogou. Aperte P dentro do jogo para fotografar o
+        seu muro.
+      </p>
+
+      <!-- Filled by the script from /gallery/index.json -->
+      <div id="pieces" class="pieces"></div>
+
+      <p id="empty" class="empty" data-i18n="gallery.empty" hidden>
+        Ainda não há peças aqui. A primeira pode ser a sua.
+      </p>
+    </main>
+
+    <div id="viewer" class="viewer" role="dialog" aria-modal="true" hidden>
+      <img id="viewer-image" alt="" />
+
+      <div class="viewer-actions">
+        <a
+          class="cta ghost"
+          id="viewer-download"
+          href="#"
+          download
+          data-i18n="gallery.download"
+          >Baixar</a
+        >
+        <button class="cta" id="viewer-share" type="button" data-i18n="gallery.share">
+          Compartilhar
+        </button>
+      </div>
+
+      <button
+        class="viewer-close"
+        id="viewer-close"
+        type="button"
+        aria-label="Fechar"
+      >
+        ×
+      </button>
+    </div>
+
+    <script type="module" src="/src/gallery/main.ts"></script>
+  </body>
+</html>

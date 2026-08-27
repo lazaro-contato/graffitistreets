@@ -1,0 +1,255 @@
+@import "./tokens.css";
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* The same street the loading screen uses, blurred and pinned, so scrolling
+   the gallery does not drag the wall along with it. */
+body {
+  min-height: 100vh;
+  background:
+    linear-gradient(rgba(6, 8, 12, 0.9), rgba(6, 8, 12, 0.96)),
+    url("/loading-bg.jpg") center / cover no-repeat fixed;
+  color: #f2f2f2;
+  font-family: system-ui, sans-serif;
+}
+
+/* Header ------------------------------------------------------------- */
+
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem clamp(1rem, 3vw, 2rem);
+  background: rgba(6, 8, 12, 0.82);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.brand img {
+  display: block;
+  height: 2.6rem;
+  width: auto;
+}
+
+.bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.icon-link {
+  display: grid;
+  place-items: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0.45rem;
+  color: rgba(255, 255, 255, 0.62);
+  transition:
+    color 0.12s ease,
+    background 0.12s ease;
+}
+
+.icon-link:hover {
+  color: var(--neon);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.icon-link svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.cta {
+  margin-left: 0.4rem;
+  padding: 0.5rem 1.1rem;
+  border-radius: 0.45rem;
+  background: var(--neon);
+  color: #080a0d;
+  font-family: var(--display);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: filter 0.12s ease;
+}
+
+.cta:hover {
+  filter: brightness(1.15);
+}
+
+/* Page ---------------------------------------------------------------- */
+
+main {
+  max-width: 96rem;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem) 5rem;
+}
+
+main h1 {
+  font-family: var(--display);
+  font-size: clamp(2rem, 5vw, 3rem);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.lede {
+  max-width: 34rem;
+  margin: 0.5rem 0 2rem;
+  line-height: 1.6;
+  opacity: 0.6;
+}
+
+.empty {
+  padding: 4rem 0;
+  text-align: center;
+  opacity: 0.45;
+}
+
+/* Masonry ------------------------------------------------------------- */
+
+/* CSS columns rather than a grid: every piece keeps whatever shape it was
+   photographed in, and the column packs them by height on its own. A grid
+   would need a row span per tile, which means measuring every image first. */
+.pieces {
+  columns: 22rem;
+  column-gap: 1rem;
+}
+
+.piece {
+  display: block;
+  width: 100%;
+  break-inside: avoid;
+  margin: 0 0 1rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.6rem;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: 0 0.4rem 1.2rem rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+.piece img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Lift and a neon edge, nothing else. Pushing the other pieces out of focus
+   was tried and read as the page glitching rather than as depth. */
+.piece:hover,
+.piece:focus-visible {
+  transform: translateY(-0.4rem) scale(1.015);
+  box-shadow:
+    0 1.4rem 2.6rem rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(57, 255, 20, 0.4);
+  outline: none;
+}
+
+/* Viewer -------------------------------------------------------------- */
+
+.viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  /* minmax(0, 1fr) rather than 1fr, on both axes, and this is the whole fix
+     for oversized images. A plain 1fr track grows to its content, so the row
+     ends up as tall as the picture and `max-height: 100%` then resolves
+     against the picture's own height — circular, and no constraint at all.
+     Allowing the track to shrink below its content gives the percentage a
+     definite box to measure against. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  place-items: center;
+  gap: 1.25rem;
+  padding: clamp(1rem, 4vw, 3rem);
+  background: rgba(4, 6, 10, 0.92);
+  backdrop-filter: blur(14px);
+}
+
+.viewer img {
+  /* The pair of min-*: 0 is the same story one level down: a grid item's
+     automatic minimum size is its content, which would keep it from ever
+     shrinking to fit. */
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 0.4rem;
+  object-fit: contain;
+  box-shadow: 0 2rem 4rem rgba(0, 0, 0, 0.7);
+}
+
+.viewer-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.cta.ghost {
+  margin: 0;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #f2f2f2;
+}
+
+.cta.ghost:hover {
+  border-color: var(--neon);
+  color: var(--neon);
+  filter: none;
+}
+
+.viewer .cta {
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: var(--display);
+}
+
+.viewer-close {
+  position: absolute;
+  top: clamp(0.5rem, 2vw, 1.25rem);
+  right: clamp(0.5rem, 2vw, 1.25rem);
+  width: 2.6rem;
+  height: 2.6rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f2f2f2;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.viewer-close:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Anyone who asked the system to calm animations down gets the edge without
+   the movement. */
+@media (prefers-reduced-motion: reduce) {
+  .piece {
+    transition: none;
+  }
+
+  .piece:hover,
+  .piece:focus-visible {
+    transform: none;
+  }
+}
