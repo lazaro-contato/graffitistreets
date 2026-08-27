@@ -915,7 +915,7 @@ html[data-unsupported] #unsupported {
 
 /* Top-right, diagonally opposite the menu list. Same corner inset as the row
    in the other corner, so the four edges of the door line up. */
-#menu-github {
+#menu-linkedin {
   position: absolute;
   top: 1.25rem;
   right: 1.25rem;
@@ -928,6 +928,6 @@ html[data-unsupported] #unsupported {
 }
 
 /* It belongs to the front door, like the shark and the row below it */
-#menu:not([data-screen="main"]) #menu-github {
+#menu:not([data-screen="main"]) #menu-linkedin {
   display: none;
 }

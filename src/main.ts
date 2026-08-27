@@ -23,7 +23,7 @@ import { Menu, MENU_ART, type MenuScreen } from "./ui/Menu";
 import { LoadingScreen } from "./ui/Loading";
 import { buildPhoto } from "./ui/Photo";
 import { BackpackHint } from "./ui/Hint";
-import { GITHUB_ICON } from "./ui/Icons";
+import { LINKEDIN_ICON } from "./ui/Icons";
 import { Session } from "./telemetry/Session";
 import {
   apply as applyLocale,
@@ -142,16 +142,9 @@ const hint = new BackpackHint();
   LINKS.SUBMIT[getLocale()];
 (document.getElementById("menu-bug") as HTMLAnchorElement).href = LINKS.BUG;
 
-// Hidden in the markup until there is somewhere real to send people.
-if (LINKS.AUTHOR) {
-  const credits = document.getElementById("menu-credits") as HTMLAnchorElement;
-  credits.href = LINKS.AUTHOR;
-  credits.hidden = false;
-}
-
-const github = document.getElementById("menu-github") as HTMLAnchorElement;
-github.href = LINKS.GITHUB_PROFILE;
-github.innerHTML = GITHUB_ICON;
+const linkedin = document.getElementById("menu-linkedin") as HTMLAnchorElement;
+linkedin.href = LINKS.LINKEDIN;
+linkedin.innerHTML = LINKEDIN_ICON;
 
 /**
  * Asks for the pointer back.

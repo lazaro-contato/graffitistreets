@@ -265,34 +265,20 @@ export const LINKS = {
    */
   SOCIAL: false,
 
-  /** The repository. Where the bug link goes, and only useful while public. */
   GITHUB: "https://github.com/lazaro-contato/graffitistreets",
-  /** The person. What the corner icon points at — that one is "who made this",
-      not "here is the source". */
-  GITHUB_PROFILE: "https://github.com/lazaro-contato",
-  /** Replace with the real profile before switching SOCIAL back on. */
-  LINKEDIN: "https://www.linkedin.com/in/",
+  /** What the corner icon points at: the answer to "who made this". */
+  LINKEDIN: "https://www.linkedin.com/in/lazaro-contato/",
 
   /**
-   * Where a bug goes. The repository is public, so this needs no account of
-   * ours and no inbox to keep — and an issue stays readable by whoever hits
-   * the same thing next, which a private message never does.
+   * Where a bug goes.
    *
-   * The list rather than the new-issue form: /issues/new redirects a
-   * signed-out visitor straight to a login page, which is a wall in place of
-   * an answer. The list opens for anyone, shows whether the bug is already
-   * known, and offers its own button to whoever decides to file one.
+   * A form rather than the repository's issues, because the repository is
+   * private — and even public it would have asked for a GitHub account from
+   * someone whose only crime was finding a bug in a graffiti game. One form
+   * for both languages: a bug report is mostly a screenshot and a sentence,
+   * and splitting it would mean two inboxes to watch for very little.
    */
-  BUG: "https://github.com/lazaro-contato/graffitistreets/issues",
-
-  /**
-   * The person behind it, for whoever plays and wants to know who made this.
-   *
-   * Null until there is a real profile to point at, and the menu item stays
-   * out of the page while it is — "quem fez" leading nowhere is worse than
-   * not asking the question.
-   */
-  AUTHOR: null as string | null,
+  BUG: "https://forms.gle/3tLcqLXkfLgpG78j9",
 
   GALLERY: "/gallery/",
 
