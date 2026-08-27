@@ -936,3 +936,21 @@ html[data-unsupported] #unsupported {
 #menu:not([data-screen="main"]) #menu-links {
   display: none;
 }
+
+/* Top-left, the one corner nothing else claims: the photo chip is top-right,
+   the backpack hint bottom-right, the palette bottom-centre and the menu
+   bottom-left. Above the blocked-phone screen too, which is the report most
+   likely to arrive without a build number attached. */
+#version {
+  position: fixed;
+  top: 0.7rem;
+  left: 0.85rem;
+  z-index: 200;
+  font-family: var(--display);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.3);
+  /* Never in the way of a click, and never selected by a drag across the HUD */
+  pointer-events: none;
+  user-select: none;
+}

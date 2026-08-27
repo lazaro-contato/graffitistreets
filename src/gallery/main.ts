@@ -2,6 +2,7 @@ import { LINKS } from "../config";
 import { GITHUB_ICON } from "../ui/Icons";
 import { wireLink } from "../ui/Links";
 import { loadTracker } from "../telemetry/tracker";
+import { showVersion } from "../ui/Version";
 import { apply as applyLocale, getLocale, t } from "../i18n/i18n";
 
 type Piece = { src: string; width: number; height: number; title?: string };
@@ -135,6 +136,7 @@ function render(pieces: Piece[], viewer: { open: (p: Piece, from: HTMLElement) =
 }
 
 async function start() {
+  showVersion();
   loadTracker();
   wireHeader();
   applyLocale();

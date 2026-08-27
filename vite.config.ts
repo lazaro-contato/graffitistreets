@@ -1,7 +1,17 @@
 import { defineConfig } from "vite";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+// Read rather than imported, so this needs no JSON module settings in the
+// TypeScript config and there is one place the version can come from.
+const { version } = JSON.parse(readFileSync("./package.json", "utf8"));
+
 export default defineConfig({
+  // Baked at build time. A version read at runtime could disagree with the
+  // bundle it is printed next to, which defeats the point of showing it.
+  define: {
+    __APP_VERSION__: JSON.stringify(version),
+  },
   build: {
     rollupOptions: {
       input: {

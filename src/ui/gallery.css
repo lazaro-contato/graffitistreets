@@ -385,3 +385,16 @@ main h1 {
     }
   }
 }
+
+/* Beside the logo rather than pinned to the corner, which the logo already
+   occupies on this page. Same size and weight as the game's, so the two read
+   as the same mark in two places. */
+#version {
+  margin-right: auto;
+  padding-top: 0.25rem;
+  font-family: var(--display);
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.3);
+  user-select: none;
+}
