@@ -31,14 +31,6 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/src/ui/gallery.css" />
-      <!-- Umami. Cookieless, so there is no consent banner standing between
-         someone and the wall. It counts the visit on its own; the game sends
-         one event at the end with what it cannot see from out here. -->
-    <script
-      defer
-      src="https://cloud.umami.is/script.js"
-      data-website-id="3f918a46-24de-4c03-a1fb-5bd861a7f779"
-    ></script>
   </head>
 
   <body>
@@ -48,22 +40,14 @@
       </a>
 
       <nav class="bar-actions">
+        <!-- The AGPL's offer of source, on both pages of the site. -->
         <a
           class="icon-link"
-          id="bar-github"
+          id="bar-source"
           href="#"
           target="_blank"
           rel="noopener noreferrer"
           aria-label="GitHub"
-          hidden
-        ></a>
-        <a
-          class="icon-link"
-          id="bar-linkedin"
-          href="#"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="LinkedIn"
           hidden
         ></a>
         <a
@@ -73,6 +57,7 @@
           target="_blank"
           rel="noopener noreferrer"
           data-i18n="gallery.submit"
+          hidden
           >Envie sua imagem</a
         >
       </nav>

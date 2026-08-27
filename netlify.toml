@@ -5,6 +5,16 @@
 [build.environment]
   NODE_VERSION = "20"
 
+  # Netlify scans the finished build for the values of this site's environment
+  # variables and refuses to deploy if it finds any, on the assumption that a
+  # variable in the output is a leaked secret.
+  #
+  # Here it is the opposite: everything prefixed VITE_ exists precisely to be
+  # baked into the bundle, and none of it is secret — an analytics id and a
+  # handful of public links, all of which every visitor downloads anyway.
+  # Without this list the deploy fails on its own correct behaviour.
+  SECRETS_SCAN_OMIT_KEYS = "VITE_UMAMI_ID,VITE_UMAMI_SRC,VITE_LINK_SOURCE,VITE_LINK_BUG,VITE_FORM_SUBMIT_PT,VITE_FORM_SUBMIT_EN"
+
 # Vite fingerprints everything under /assets, so those URLs can never go stale
 # and are safe to keep forever. Everything else in dist/ keeps its filename
 # across deploys, so it is left to Netlify's ETag revalidation instead — a

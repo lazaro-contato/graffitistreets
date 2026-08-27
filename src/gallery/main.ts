@@ -1,27 +1,18 @@
 import { LINKS } from "../config";
-import { GITHUB_ICON, LINKEDIN_ICON } from "../ui/Icons";
+import { GITHUB_ICON } from "../ui/Icons";
+import { wireLink } from "../ui/Links";
+import { loadTracker } from "../telemetry/tracker";
 import { apply as applyLocale, getLocale, t } from "../i18n/i18n";
 
 type Piece = { src: string; width: number; height: number; title?: string };
 
 const MANIFEST = "/gallery/index.json";
 
+// The same three the game's front screen carries, wired the same way, so the
+// two headers cannot drift out of step.
 function wireHeader() {
-  (document.getElementById("bar-submit") as HTMLAnchorElement).href =
-    LINKS.SUBMIT[getLocale()];
-
-  // Same switch as the menu, so the two cannot drift out of step.
-  if (!LINKS.SOCIAL) return;
-
-  for (const [id, href, icon] of [
-    ["bar-github", LINKS.GITHUB, GITHUB_ICON],
-    ["bar-linkedin", LINKS.LINKEDIN, LINKEDIN_ICON],
-  ] as const) {
-    const anchor = document.getElementById(id) as HTMLAnchorElement;
-    anchor.href = href;
-    anchor.innerHTML = icon;
-    anchor.hidden = false;
-  }
+  wireLink("bar-submit", LINKS.SUBMIT[getLocale()]);
+  wireLink("bar-source", LINKS.SOURCE, GITHUB_ICON);
 }
 
 function fileNameOf(src: string) {
@@ -144,6 +135,7 @@ function render(pieces: Piece[], viewer: { open: (p: Piece, from: HTMLElement) =
 }
 
 async function start() {
+  loadTracker();
   wireHeader();
   applyLocale();
   document.title = t("gallery.meta.title");

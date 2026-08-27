@@ -23,7 +23,8 @@ import { Menu, MENU_ART, type MenuScreen } from "./ui/Menu";
 import { LoadingScreen } from "./ui/Loading";
 import { buildPhoto } from "./ui/Photo";
 import { BackpackHint } from "./ui/Hint";
-import { LINKEDIN_ICON, X_ICON } from "./ui/Icons";
+import { GITHUB_ICON } from "./ui/Icons";
+import { wireLink } from "./ui/Links";
 import { Session } from "./telemetry/Session";
 import {
   apply as applyLocale,
@@ -138,18 +139,9 @@ const menu = new Menu({
 const inventory = new Inventory(can, () => closeBackpack());
 const hint = new BackpackHint();
 
-(document.getElementById("menu-submit") as HTMLAnchorElement).href =
-  LINKS.SUBMIT[getLocale()];
-(document.getElementById("menu-bug") as HTMLAnchorElement).href = LINKS.BUG;
-
-for (const [id, href, icon] of [
-  ["menu-linkedin", LINKS.LINKEDIN, LINKEDIN_ICON],
-  ["menu-x", LINKS.X, X_ICON],
-] as const) {
-  const anchor = document.getElementById(id) as HTMLAnchorElement;
-  anchor.href = href;
-  anchor.innerHTML = icon;
-}
+wireLink("menu-submit", LINKS.SUBMIT[getLocale()]);
+wireLink("menu-bug", LINKS.BUG);
+wireLink("menu-source", LINKS.SOURCE, GITHUB_ICON);
 
 /**
  * Asks for the pointer back.

@@ -88,14 +88,6 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/src/ui/styles.css" />
-      <!-- Umami. Cookieless, so there is no consent banner standing between
-         someone and the wall. It counts the visit on its own; the game sends
-         one event at the end with what it cannot see from out here. -->
-    <script
-      defer
-      src="https://cloud.umami.is/script.js"
-      data-website-id="3f918a46-24de-4c03-a1fb-5bd861a7f779"
-    ></script>
   </head>
   <body>
     <canvas id="app"></canvas>
@@ -145,21 +137,16 @@
            by script, because the icon is markup and belongs with the other
            icons rather than inlined here. -->
       <div id="menu-links">
+        <!-- The AGPL's offer of source, made where someone using the thing can
+             actually find it. -->
         <a
           class="icon-link"
-          id="menu-linkedin"
+          id="menu-source"
           href="#"
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="LinkedIn"
-        ></a>
-        <a
-          class="icon-link"
-          id="menu-x"
-          href="#"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="X"
+          aria-label="GitHub"
+          hidden
         ></a>
       </div>
 
@@ -173,6 +160,7 @@
           target="_blank"
           rel="noopener noreferrer"
           data-i18n="menu.bug"
+          hidden
           >Reportar um bug</a
         >
         <a
@@ -182,6 +170,7 @@
           target="_blank"
           rel="noopener noreferrer"
           data-i18n="gallery.submit"
+          hidden
           >Envie sua imagem</a
         >
       </nav>

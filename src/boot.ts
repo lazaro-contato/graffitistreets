@@ -1,4 +1,5 @@
 import { apply as applyLocale } from "./i18n/i18n";
+import { loadTracker } from "./telemetry/tracker";
 
 /**
  * Decides whether there is a game to load at all.
@@ -17,6 +18,8 @@ import { apply as applyLocale } from "./i18n/i18n";
  * The game is imported rather than required, so a phone never downloads
  * three-quarters of a megabyte of renderer it has no use for.
  */
+loadTracker();
+
 const canPlay = !window.matchMedia("(pointer: coarse) and (hover: none)")
   .matches;
 

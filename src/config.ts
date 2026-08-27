@@ -255,31 +255,28 @@ export const BRUSH_SIZINGS: readonly { id: BrushSizing }[] = [
 
 export const DEFAULT_BRUSH_SIZING: BrushSizing = "auto";
 
-/** Where the header and the menu send people. */
+/**
+ * Where the header and the menu send people.
+ *
+ * Every one of these is personal to whoever runs the site rather than part of
+ * the game, so they come from the environment instead of from source. A clone
+ * with no configuration gets a game with no links, which is the right default:
+ * it should not advertise somebody else's profile, and it must never post to
+ * their forms.
+ *
+ * All optional. Whatever is missing, the element that would have carried it
+ * stays out of the page — see .env.example for the full list.
+ */
 export const LINKS = {
   /**
-   * Off for now. A switch rather than commented-out markup, so the wiring
-   * stays type-checked and turning it back on is one boolean — and so the
-   * elements are hidden by the same flag in both places rather than by two
-   * separate edits that can drift apart.
+   * The source of the running version. Under the AGPL this is not decoration:
+   * a modified version served over a network owes its source to whoever uses
+   * it, and this is where that offer is made.
    */
-  SOCIAL: false,
+  SOURCE: import.meta.env.VITE_LINK_SOURCE || null,
 
-  GITHUB: "https://github.com/lazaro-contato/graffitistreets",
-  /** The two corner icons: between them, the answer to "who made this". */
-  LINKEDIN: "https://www.linkedin.com/in/lazaro-contato/",
-  X: "https://x.com/lzrodev",
-
-  /**
-   * Where a bug goes.
-   *
-   * A form rather than the repository's issues, because the repository is
-   * private — and even public it would have asked for a GitHub account from
-   * someone whose only crime was finding a bug in a graffiti game. One form
-   * for both languages: a bug report is mostly a screenshot and a sentence,
-   * and splitting it would mean two inboxes to watch for very little.
-   */
-  BUG: "https://forms.gle/3tLcqLXkfLgpG78j9",
+  /** Where a bug goes: a form, so nobody needs an account to report one. */
+  BUG: import.meta.env.VITE_LINK_BUG || null,
 
   GALLERY: "/gallery/",
 
@@ -291,8 +288,8 @@ export const LINKS = {
    * way to lose them.
    */
   SUBMIT: {
-    pt: "https://forms.gle/tLMST61YRUSdMnAK9",
-    en: "https://forms.gle/dewxq8uwhR6LXByn8",
+    pt: import.meta.env.VITE_FORM_SUBMIT_PT || null,
+    en: import.meta.env.VITE_FORM_SUBMIT_EN || null,
   },
 } as const;
 

@@ -4,3 +4,9 @@ dist
 *.local
 .vercel
 .netlify
+
+# Local configuration. .env.example is the documented shape and is committed;
+# anything with real values in it is not.
+.env
+.env.*
+!.env.example
