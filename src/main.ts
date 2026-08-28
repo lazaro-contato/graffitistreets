@@ -248,10 +248,24 @@ function openWorkshop(from: "street" | "pause") {
 function closeWorkshop() {
   if (!workshop.isOpen) return;
   // Shut on the spot: pressing I again has to close it whether or not the
-  // pointer comes back. The refuge covers the case where it does not.
+  // pointer comes back.
   workshop.close();
-  if (workshopFrom === "pause") menu.show("pause");
-  else enterStreet("pause");
+
+  if (workshopFrom === "pause") {
+    menu.show("pause");
+    return;
+  }
+
+  // Back to the street, with no refuge. Escape is the usual way out of here
+  // and Escape cannot take the pointer: browsers refuse a lock requested from
+  // it, so this asks and expects to be told no. Falling back to the pause
+  // screen — which is what a refuge would do — meant leaving the workshop
+  // landed you in a menu you never asked for.
+  //
+  // So the street comes back either way, and the click below takes the
+  // pointer. A visible HUD and a cursor is not being stranded.
+  hud.hidden = false;
+  enterStreet();
 }
 
 player.controls.addEventListener("lock", () => {
@@ -268,6 +282,20 @@ player.controls.addEventListener("unlock", () => {
   // means the player stepped away, so pause. Unless we let go of it ourselves
   // to open the backpack, or a menu screen is already up.
   if (!workshop.isOpen && !menu.isOpen) menu.show("pause");
+});
+
+/**
+ * A click in the street takes the pointer back.
+ *
+ * This is the recovery for every lock request that gets refused, and refusals
+ * are ordinary rather than exceptional: a request made from Escape is always
+ * turned down, and one made too soon after an Escape exit usually is. Rather
+ * than guessing which, the street stays on screen and the first click puts the
+ * player back in it — the same gesture that started the game.
+ */
+canvas.addEventListener("pointerdown", () => {
+  if (menu.isOpen || workshop.isOpen || player.controls.isLocked) return;
+  enterStreet();
 });
 
 // Opening a tab drops pointer lock, which is what anyone clicking a link
