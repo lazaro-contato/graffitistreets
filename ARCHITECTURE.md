@@ -215,8 +215,17 @@ Two things this has to get right:
   longer exists, a size out of range, a colour that is not a colour — all fall
   back to the default for that slot rather than reaching the brush.
 - **The practice wall is the real paint.** It shares the base coat, the brush,
-  the dab spacing and the twist tracker with the street. A preview with its own
-  painting code would answer a different question from the one being asked.
+  the dab spacing, the twist tracker, the dwell tracker and the drip simulation
+  with the street, and paint reaches it through a Transport the same way. A
+  preview with its own painting code would answer a different question from the
+  one being asked.
+- **It needs its own clock, and that is not obvious.** The street samples at a
+  fixed 60 Hz off the frame delta; the practice wall has no frame loop of its
+  own unless it is given one. Sampling per pointer event instead looks right
+  and is not: time stops existing on the wall. Holding the trigger still leaves
+  a single dab where the street lays a hundred and twenty and then lets the
+  paint run, and moving slowly comes out no darker than moving fast — which is
+  the one thing a spray can is most about.
 
 ---
 

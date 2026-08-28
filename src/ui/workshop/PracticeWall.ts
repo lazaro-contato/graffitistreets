@@ -1,6 +1,10 @@
 import { LOADOUT, SPRAY, type CanSpec } from "../../config";
 import { SprayCan } from "../../paint/SprayCan";
 import { TwistTracker } from "../../paint/Twist";
+import { DwellTracker } from "../../paint/Dwell";
+import { DripSystem } from "../../paint/DripSystem";
+import { LocalTransport } from "../../net/LocalTransport";
+import type { StrokeAppend } from "../../state/types";
 import {
   renderSketch,
   renderSketchStroke,
@@ -21,6 +25,12 @@ const WALL_METERS = 1.8;
 
 /** Reseeded on every clear, so a fresh wall is a fresh wall. */
 let seed = 1;
+
+/** Seconds between samples. The street's cadence, and for the same reasons. */
+const SAMPLE_INTERVAL = 1 / SPRAY.SAMPLE_HZ;
+
+/** Longest step the clock will believe, so a stall cannot dump paint. */
+const MAX_STEP = 0.05;
 
 export type Dial = {
   key: "size" | "flow";
@@ -63,8 +73,27 @@ export class PracticeWall {
   private combo = document.getElementById("wk-combo")!;
 
   private strokes: SketchStroke[] = [];
-  private active: SketchStroke | null = null;
+  private byId = new Map<string, SketchStroke>();
   private twister = new TwistTracker();
+  private dwell = new DwellTracker();
+
+  /**
+   * Paint here travels the same road it does in the street: built into a
+   * message, sent, and drawn when it comes back. That is what lets the real
+   * DripSystem run on this wall without knowing it is a preview.
+   */
+  private transport = new LocalTransport();
+  private drips = new DripSystem(this.transport, "practice");
+
+  /** The stroke being laid down, and where the pointer last was. */
+  private strokeId: string | null = null;
+  private at: { u: number; v: number } | null = null;
+  private painting = false;
+
+  /** The clock. Without one, holding the trigger still would paint nothing. */
+  private accumulator = 0;
+  private lastFrame = 0;
+  private frame = 0;
 
   /** A can used as a calculator: fixed sizing, so range never enters into it. */
   private gauge = new SprayCan();
@@ -135,48 +164,131 @@ export class PracticeWall {
   }
 
   private bindPainting() {
+    // Everything that marks this wall arrives here, whether it came from the
+    // pointer or from a run breaking away, exactly as the street works.
+    this.transport.onMessage((message) => {
+      if (message.kind === "stroke:append") this.draw(message);
+    });
+
     this.wrap.addEventListener("pointerdown", (event) => {
       if (!this.can) return;
       event.preventDefault();
       this.wrap.setPointerCapture(event.pointerId);
 
       this.twister.reset();
-      const at = this.pointAt(event);
-      this.active = {
-        cap: this.can.cap,
-        color: this.can.color,
-        points: [{ ...at, r: this.radius(), a: this.alpha(), w: 0 }],
-      };
-      this.strokes.push(this.active);
-      renderSketchStroke(this.ctx, this.size, this.active);
+      this.dwell.reset();
+      this.strokeId = crypto.randomUUID();
+      this.at = this.pointAt(event);
+      this.painting = true;
+      // Lay the first dab now rather than up to a sample away, so the wall
+      // marks the instant the button goes down.
+      this.accumulator = SAMPLE_INTERVAL;
     });
 
+    // The pointer only reports where it is. When that becomes paint is the
+    // clock's business — see tick.
     this.wrap.addEventListener("pointermove", (event) => {
-      const stroke = this.active;
-      if (!stroke) return;
-
-      const at = this.pointAt(event);
-      const prev = stroke.points[stroke.points.length - 1];
-      const w = this.twist(prev, at);
-      const point = { ...at, r: this.radius(), a: this.alpha(), w };
-
-      // Only the new segment is drawn, the same way the wall does it: redrawing
-      // the whole stroke on every move would be quadratic, and alpha piles up
-      // on each pass so the line would darken as it grew.
-      renderSketchStroke(this.ctx, this.size, {
-        cap: stroke.cap,
-        color: stroke.color,
-        points: [prev, point],
-      });
-      stroke.points.push(point);
+      if (this.painting) this.at = this.pointAt(event);
     });
 
     const end = () => {
-      this.active = null;
+      this.painting = false;
+      this.strokeId = null;
       this.twister.reset();
+      this.dwell.reset();
     };
     this.wrap.addEventListener("pointerup", end);
     this.wrap.addEventListener("pointercancel", end);
+  }
+
+  /**
+   * One tick of the wall's own clock.
+   *
+   * The street samples at a fixed rate rather than once per frame, so that
+   * paint accumulates at the same speed on a 30 Hz machine and a 165 Hz one.
+   * This wall used to sample once per pointer event instead, which meant time
+   * did not exist on it: holding the trigger still left a single dab where the
+   * street would have laid a hundred and twenty and then let the paint run,
+   * and moving slowly was no darker than moving fast. Hence the clock.
+   */
+  private tick = (now: number) => {
+    this.frame = requestAnimationFrame(this.tick);
+
+    const dt = Math.min(MAX_STEP, (now - this.lastFrame) / 1000);
+    this.lastFrame = now;
+    if (dt <= 0) return;
+
+    if (this.painting && this.at && this.can) {
+      // Dwell runs every frame on real time, not on the sampling cadence, so
+      // that "three seconds" means three seconds.
+      this.trackDwell(this.at, dt);
+
+      this.accumulator += dt;
+      if (this.accumulator >= SAMPLE_INTERVAL) {
+        this.accumulator = 0;
+        this.sample(this.at);
+      }
+    }
+
+    // Outside the `painting` branch: a run carries on descending after the
+    // trigger is let go.
+    this.drips.update(dt);
+  };
+
+  /** Records one point of the stroke in hand. */
+  private sample(at: { u: number; v: number }) {
+    const can = this.can!;
+    const stroke = this.byId.get(this.strokeId!);
+    const prev = stroke?.points[stroke.points.length - 1];
+
+    this.transport.send({
+      kind: "stroke:append",
+      strokeId: this.strokeId!,
+      side: "left", // this wall has only one, and nothing here reads it
+      color: can.color,
+      cap: can.cap,
+      point: {
+        ...at,
+        r: this.radius(),
+        a: this.alpha(),
+        w: prev ? this.twist(prev, at) : 0,
+      },
+      authorId: "practice",
+    });
+  }
+
+  /** Floods a spot that has been sprayed long enough, and lets it run. */
+  private trackDwell(at: { u: number; v: number }, dt: number) {
+    const radius = this.radius();
+    const soak = this.dwell.advance(
+      at.u * this.size.widthMeters,
+      at.v * this.size.heightMeters,
+      radius,
+      dt,
+    );
+    if (soak === null) return;
+    this.drips.spawn("left", at.u, at.v, this.can!.color, radius, soak);
+  }
+
+  /** Draws a message, and only the new segment of it. */
+  private draw(message: StrokeAppend) {
+    let stroke = this.byId.get(message.strokeId);
+    if (!stroke) {
+      stroke = { cap: message.cap, color: message.color, points: [] };
+      this.byId.set(message.strokeId, stroke);
+      this.strokes.push(stroke);
+    }
+
+    const prev = stroke.points[stroke.points.length - 1];
+    stroke.points.push(message.point);
+
+    // Redrawing the whole stroke on every point would be quadratic, and alpha
+    // piles up on each pass so the line would darken as it grew.
+    renderSketchStroke(this.ctx, this.size, {
+      cap: stroke.cap,
+      color: stroke.color,
+      points: prev ? [prev, message.point] : [message.point],
+    });
   }
 
   private twist(from: { u: number; v: number }, to: { u: number; v: number }) {
@@ -205,17 +317,45 @@ export class PracticeWall {
   }
 
   undo() {
-    if (this.strokes.length === 0) return;
-    this.strokes.pop();
+    const gone = this.strokes.pop();
+    if (!gone) return;
+    for (const [id, stroke] of this.byId) {
+      if (stroke === gone) this.byId.delete(id);
+    }
     this.repaint();
   }
 
   /** Wipes the wall and its journal. Called on the way out of the workshop. */
   clear() {
     this.strokes.length = 0;
-    this.active = null;
+    this.byId.clear();
+    this.painting = false;
+    this.strokeId = null;
+    this.twister.reset();
+    this.dwell.reset();
+    // A fresh system rather than a fresh method on it: runs still descending
+    // belong to paint that is no longer there.
+    this.drips = new DripSystem(this.transport, "practice");
     seed += 1;
     this.repaint();
+  }
+
+  /**
+   * Starts and stops the wall's clock with the workshop.
+   *
+   * Nothing here should tick while the screen is closed: a run left mid-fall
+   * would carry on down a wall nobody is looking at, and arrive finished.
+   */
+  start() {
+    if (this.frame) return;
+    this.lastFrame = performance.now();
+    this.frame = requestAnimationFrame(this.tick);
+  }
+
+  stop() {
+    if (!this.frame) return;
+    cancelAnimationFrame(this.frame);
+    this.frame = 0;
   }
 
   // ------------------------------------------------------------------ size

@@ -128,6 +128,7 @@ export class Workshop {
     if (this.isOpen) return;
     this.isOpen = true;
     this.root.hidden = false;
+    this.wall.start();
     // The canvas had no box while the screen was hidden, so it can only be
     // measured now. Next frame, once the layout has actually run.
     requestAnimationFrame(() => this.wall.refresh());
@@ -139,6 +140,7 @@ export class Workshop {
     this.picker.cancel();
     // The practice wall does not survive the visit. Anything painted on it was
     // a question about a can, and the question is over.
+    this.wall.stop();
     this.wall.clear();
     this.root.hidden = true;
   }
