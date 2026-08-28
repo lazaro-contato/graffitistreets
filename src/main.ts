@@ -165,7 +165,9 @@ const menu = new Menu({
   onQuit: () => menu.show("main"),
 });
 
-const workshop = new Workshop(loadout, { onClose: () => closeWorkshop() });
+// The workshop only ever closes itself with Escape, hence `false`: see
+// closeWorkshop for why that key cannot ask for the pointer straight away.
+const workshop = new Workshop(loadout, { onClose: () => closeWorkshop(false) });
 const hint = workshopHint();
 
 // The workshop generates copy and cap samples, so it has to be told: one pass
@@ -226,50 +228,123 @@ document.addEventListener("pointerlockerror", () => {
   refuge = null;
 });
 
+/**
+ * True between us handing the pointer back on purpose and the browser
+ * confirming it is gone.
+ *
+ * The unlock listener needs it to tell "the player walked away" from "we asked
+ * for this". It used to infer that from whether the workshop was open, which
+ * is only true while the exit arrives promptly — and `pointerlockchange` is
+ * asynchronous, so a fast Escape could close the workshop first and leave the
+ * exit looking like the player leaving.
+ */
+let releasing = false;
+
+/** Hands the pointer back without that being read as stepping away. */
+function releasePointer() {
+  if (!player.controls.isLocked) return;
+  releasing = true;
+  player.controls.unlock();
+  // The event is not guaranteed to arrive — an unfocused document can swallow
+  // it — so the flag is cleared on a timer regardless, like `requesting`.
+  window.setTimeout(() => {
+    releasing = false;
+  }, 1000);
+}
+
 function openWorkshop() {
   if (workshop.isOpen) return;
   hint.dismiss();
   menu.hide();
   workshop.open();
   hud.hidden = true;
-  player.controls.unlock();
+  releasePointer();
 }
+
+/** Long enough for the browser to be done with the Escape that closed us. */
+const RELOCK_DELAY_MS = 80;
 
 /**
  * Shuts the workshop and puts the player back in the street.
  *
  * Always the street, whichever door they came in by. The workshop is only
- * reachable from inside a game — with I from the street, or from the pause
- * screen — so there is nowhere else that closing it could sensibly mean, and
- * sending anyone back to a menu they had already left is the bug this keeps
- * being: they asked to close the workshop, not to open something else.
+ * reachable from inside a game, so there is nowhere else that closing it could
+ * sensibly mean.
  *
- * The lock request is expected to fail when Escape made it, because browsers
- * refuse one from that key. It is asked for anyway, and the click handler
- * below is what actually recovers: the street is on screen either way.
+ * `now` is false when Escape closed it, and the delay that buys is the whole
+ * point. A pointer lock requested from inside an Escape keydown is not simply
+ * refused — Chrome grants it and then revokes it for that very keypress. The
+ * grant runs the `lock` listener, so the street comes back; the revocation
+ * arrives a moment later as an ordinary unlock, and that is what was raising
+ * the pause screen over it. "Back to the street, paused" was those two events
+ * in order.
+ *
+ * Asked for on a later task instead, the keypress is over: the request either
+ * succeeds and stays, or is refused and the click handler below picks it up.
+ * Neither can pause the game.
  */
-function closeWorkshop() {
+function closeWorkshop(now: boolean) {
   if (!workshop.isOpen) return;
   // Shut on the spot: pressing I again has to close it whether or not the
   // pointer comes back.
   workshop.close();
   hud.hidden = false;
-  enterStreet();
+
+  if (now) {
+    enterStreet();
+    return;
+  }
+
+  window.setTimeout(() => {
+    // Escape twice in quick succession, or straight back into the workshop,
+    // must not be undone by a request made for the first one.
+    if (!workshop.isOpen && !menu.isOpen) enterStreet();
+  }, RELOCK_DELAY_MS);
 }
+
+/**
+ * A lock this short was never really granted.
+ *
+ * Chrome will hand the pointer over and take it straight back when the request
+ * came from the same keypress that also means "let go" — Escape. Nobody locks
+ * the pointer and walks away inside a quarter of a second, so an exit that
+ * fast is a refusal rather than a departure, and pausing on it is what put a
+ * menu over the street.
+ */
+const REVOKE_MS = 250;
+
+/** When the pointer was last actually ours. */
+let lockedAt = -Infinity;
 
 player.controls.addEventListener("lock", () => {
   requesting = false;
   refuge = null;
+  lockedAt = performance.now();
   menu.hide();
   workshop.close();
   hud.hidden = false;
 });
 
 player.controls.addEventListener("unlock", () => {
+  // An exit we asked for is not the player stepping away, and it must not
+  // pause the game — whenever it turns up. This is a flag rather than a look
+  // at what is on screen, because the screen that asked for it may already
+  // have closed by the time the browser gets round to telling us.
+  if (releasing) {
+    releasing = false;
+    return;
+  }
+
+  // See REVOKE_MS: a lock revoked the instant it was granted leaves the street
+  // exactly as it was, for the click handler below to pick up.
+  if (performance.now() - lockedAt < REVOKE_MS) {
+    hud.hidden = false;
+    return;
+  }
+
   hud.hidden = true;
   // Losing the lock on its own — Esc, or the tab going to the background —
-  // means the player stepped away, so pause. Unless we let go of it ourselves
-  // to open the backpack, or a menu screen is already up.
+  // means the player stepped away, so pause. Unless a menu is already up.
   if (!workshop.isOpen && !menu.isOpen) menu.show("pause");
 });
 
@@ -304,7 +379,7 @@ window.addEventListener("keydown", (e) => {
   }
 
   if (e.code === "KeyI") {
-    if (workshop.isOpen) closeWorkshop();
+    if (workshop.isOpen) closeWorkshop(true);
     else if (player.controls.isLocked) openWorkshop();
     return;
   }
