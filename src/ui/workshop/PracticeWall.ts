@@ -1,4 +1,4 @@
-import { LOADOUT, SPRAY, type CanSpec } from "../../config";
+import { CAP_BY_ID, LOADOUT, SPRAY, type CanSpec } from "../../config";
 import { SprayCan } from "../../paint/SprayCan";
 import { TwistTracker } from "../../paint/Twist";
 import { DwellTracker } from "../../paint/Dwell";
@@ -291,8 +291,18 @@ export class PracticeWall {
     });
   }
 
+  /**
+   * Turn for the point about to be recorded, for the one cap that turns.
+   *
+   * Only the roller opts in, and the guard is the whole point: a calligraphy
+   * cap's identity is the fixed angle that makes it thick across its edge and
+   * thin along it. Turn it with the stroke and it stops being one. This wall
+   * was twisting every cap, so the flat ones swung round on every curve and
+   * showed a mark you cannot actually paint.
+   */
   private twist(from: { u: number; v: number }, to: { u: number; v: number }) {
-    if (!this.can) return 0;
+    if (!this.can || !CAP_BY_ID.get(this.can.cap)!.twists) return 0;
+
     // Canvas angle terms: v grows up the wall, y grows down the canvas.
     return this.twister.advance(
       (to.u - from.u) * this.size.widthMeters,
