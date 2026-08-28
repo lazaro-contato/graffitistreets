@@ -1,11 +1,7 @@
 import { stampDab } from "./Brush";
 import { capExtent } from "./CapGeometry";
-import {
-  TEXTURE,
-  SPRAY,
-  PANEL_TEXTURE_WIDTH,
-  PANEL_TEXTURE_HEIGHT,
-} from "../config";
+import { TEXTURE, PANEL_TEXTURE_WIDTH, PANEL_TEXTURE_HEIGHT } from "../config";
+import { dabSteps } from "./StrokeMath";
 import type { Stroke } from "../state/types";
 import { CAP_BY_ID, type CapId } from "../config";
 import type { WallStrip } from "../world/WallStrip";
@@ -104,9 +100,7 @@ export function renderStroke(
     const prevTwist = prev.w ?? 0;
     const twist = point.w ?? 0;
 
-    const dist = Math.hypot(x - px, y - py);
-    const step = Math.max(1, radiusPx * SPRAY.DAB_SPACING);
-    const steps = Math.ceil(dist / step);
+    const steps = dabSteps(Math.hypot(x - px, y - py), radiusPx);
 
     for (let s = 1; s <= steps; s++) {
       const t = s / steps;

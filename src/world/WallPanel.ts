@@ -2,12 +2,11 @@ import * as THREE from "three";
 import {
   WORLD,
   TEXTURE,
-  SURFACE,
   PANEL_TEXTURE_WIDTH,
   PANEL_TEXTURE_HEIGHT,
   type Side,
 } from "../config";
-import { createRandom } from "../core/Random";
+import { paintConcrete } from "./Concrete";
 import { BARE_WALL, type WallSurface } from "./Surfaces";
 
 export type { Side };
@@ -143,48 +142,17 @@ export class WallPanel {
    * repaints the panel.
    */
   paintBase() {
-    const { ctx } = this;
-    const w = PANEL_TEXTURE_WIDTH;
-    const h = PANEL_TEXTURE_HEIGHT;
-    const random = createRandom(0x9e3779b9 ^ this.id);
-
-    ctx.globalAlpha = 1;
-
     const photographed = this.surface.albedo
       ? this.tilePhoto(this.surface.albedo)
       : false;
 
-    if (!photographed) {
-      ctx.fillStyle = TEXTURE.BASE_COLOR;
-      ctx.fillRect(0, 0, w, h);
-
-      // Concrete grain. Skipped over a photograph, which already has its own —
-      // and this per-pixel pass is the slowest thing in start-up.
-      const img = ctx.getImageData(0, 0, w, h);
-      const data = img.data;
-      for (let i = 0; i < data.length; i += 4) {
-        const n = (random() - 0.5) * 255 * TEXTURE.NOISE_AMOUNT;
-        data[i] += n;
-        data[i + 1] += n;
-        data[i + 2] += n;
-      }
-      ctx.putImageData(img, 0, 0);
-    }
-
-    // Damp patches, so the surface does not read as flat — and so two panels
-    // sharing one tiled photograph do not read as clones of each other.
-    ctx.globalAlpha = photographed ? SURFACE.GRUNGE_ALPHA : 0.05;
-    for (let i = 0; i < 12; i++) {
-      const x = random() * w;
-      const y = random() * h;
-      const r = (60 + random() * 180) * (TEXTURE.PIXELS_PER_METER / 256);
-      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, "#3a3a38");
-      g.addColorStop(1, "rgba(58,58,56,0)");
-      ctx.fillStyle = g;
-      ctx.fillRect(x - r, y - r, r * 2, r * 2);
-    }
-    ctx.globalAlpha = 1;
+    paintConcrete(this.ctx, {
+      width: PANEL_TEXTURE_WIDTH,
+      height: PANEL_TEXTURE_HEIGHT,
+      seed: this.id,
+      // A photograph brings its own grain, so only the damp patches go over it.
+      grain: !photographed,
+    });
 
     this.dirty = true;
   }
