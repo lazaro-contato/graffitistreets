@@ -35,6 +35,7 @@ English.** Only `context.md`, the original spec, is in Portuguese.
 | 2.7   | Smaller arena (8 x 3 m walls) and a free flight mode          | Done   |
 | 2.8   | Menu: main, pause, controls, and mode as a setting            | Done   |
 | 2.9   | Menu artwork, display face, loading spinner, Portuguese copy  | Done   |
+| 2.10  | Maps as data: three streets, chosen in the menu                | Done   |
 | 3     | Polish: audio, IndexedDB persistence, PNG export, mobile     | To do  |
 | 4     | Server persistence (journal + WebP snapshots)                | To do  |
 | 5     | Multiplayer cities (Colyseus, avatars, lobby)                | To do  |
@@ -75,6 +76,37 @@ server and returns as a broadcast, and **nothing in `paint/`, `world/` or
 For the same reason, `authorId` is modeled from day one even with a single
 player. Retrofitting identity into single player code means an optional
 `authorId` scattered across thirty places.
+
+---
+
+## Maps
+
+A map is data, the same way a cap is data: `src/maps/` holds one file per
+street — dimensions, which photography dresses each wall, the weather, and
+where the lamps stand. `measure()` works out everything derivable from it
+once. Adding a street is adding a file and two strings; nothing branches on
+which one is loaded.
+
+Three streets so far, and they exist to play differently rather than to look
+different. Range is the main control in this game (see below), so the thing a
+map really sets is how much room there is to use it:
+
+| Map | Wall | Wall to wall | What changes |
+| --- | --- | --- | --- |
+| Alley | 12 x 3 m | 6 m | the small one, and where to learn |
+| Avenue | 20 x 4 m | 9 m | six times the surface; the top band needs flight |
+| Corridor | 10 x 2.75 m | 3.6 m | nowhere to back off to, so the cone stays tight |
+
+Two consequences worth keeping in mind:
+
+- **A map id and a wall id are persistence format.** They are stored on every
+  stroke, so they are frozen once anything has been painted on them. Renaming
+  a wall orphans every stroke on it. They are free strings rather than a closed
+  union for the same reason: a map added next month must not force a migration
+  of everything painted before it.
+- **Changing street rebuilds the world in place** rather than reloading the
+  page, which is the same move phase 5 needs to travel between cities. That
+  makes disposal load-bearing rather than tidy — see the pitfalls below.
 
 ---
 
@@ -234,7 +266,9 @@ Four states, and only one of them holds the pointer:
 | State | Pointer | Shown |
 | ----- | ------- | ----- |
 | playing | locked | HUD |
-| menu: main | free | Play, mode setting, Controls |
+| menu: main | free | Play, Controls, Settings |
+| menu: maps | free | which street to paint in |
+| menu: modes | free | on foot or free flight |
 | menu: pause | free | Resume, Controls, Quit to menu |
 | menu: controls | free | key list, Back |
 | backpack | free | cap slots |
@@ -266,15 +300,15 @@ disorienting. Quit to menu to change it.
 
 - **On foot** — gravity, `Space` jumps 0.80 m, `Shift` sprints.
 - **Free flight** — no gravity, `Space` climbs, `Shift` sinks. The eye is
-  capped at `PLAYER.FLY_CEILING`, half a metre over the wall.
+  capped at `MapMetrics.flyCeiling`, half a metre over that map's wall.
 
 The cap is on the **eye**, not the feet, so crouching in mid air cannot buy
 extra altitude. Flight also keeps full horizontal authority: you are steering,
 not falling, so air control and air drag stay out of it.
 
-Free flight is not a debug toy — from 2 m out the ray to the top of the wall is
-2.39 m, past `SPRAY.MAX_DISTANCE`, so the top band is genuinely hard to reach
-on foot.
+Free flight is not a debug toy — from 2 m out the ray to the top of a 3 m wall
+is 2.39 m, past `SPRAY.MAX_DISTANCE`, so the top band is genuinely hard to
+reach on foot. On the avenue, at 4 m, it is out of reach altogether.
 
 `MoveIntent` names its two booleans `shift` and `space`, after the keys, since
 what they mean depends on the mode.
@@ -317,8 +351,10 @@ showing exactly when the spray would mark the wall.
 
 ## Wall surface
 
-`public/wall/` optionally holds `albedo.jpg`, `normal.jpg` and `roughness.jpg`.
-Any that are missing fall back to the procedural concrete, silently.
+`public/wall/<name>/` optionally holds `albedo.jpg`, `normal.jpg` and
+`roughness.jpg`. `src/maps/surfaces.ts` names each set once and every map
+points each of its walls at one. Any file that is missing falls back to the
+procedural concrete, silently.
 
 The albedo is **not** a material map. A panel's canvas is its colour texture,
 because paint is drawn onto it, so the photograph is tiled into that canvas as
@@ -331,24 +367,30 @@ panel. That means two different offset conventions have to agree: a canvas
 pattern transform in pixels, and a UV `offset`/`repeat` in tile units.
 Verified: they land on the same tile number at every sampled point.
 
-One tile covers `SURFACE.TILE_METERS` of wall whatever the file's pixel size,
+One tile covers the surface's own `tileMeters` whatever the file's pixel size,
 so brick stays brick-sized if the texture resolution or the panel size changes.
-At 192 px/m a 2 m tile draws at 384 px, so 1K source files are already
-oversized.
+It is per surface rather than global because a concrete panel and a coat of
+flaking paint are photographed at different scales. At 192 px/m a 2 m tile
+draws at 384 px, so 1K source files are already oversized.
 
 ---
 
 ## Strips, not panels
 
-A wall side is **one continuous paint surface** (`WallStrip`). It is cut into
-10 panel canvases for exactly one reason: to keep each texture upload small.
-Panels are a rendering detail and nothing above `world/` should treat them as
-logical units.
+A wall is **one continuous paint surface** (`WallStrip`). It is cut into panel
+canvases for exactly one reason: to keep each texture upload small. Panels are
+a rendering detail and nothing above `world/` should treat them as logical
+units.
 
 Strokes are therefore stored in **strip coordinates** — `u` runs 0..1 across
-all 60 m of one wall — and a stroke belongs to a `side`, not to a panel.
-Rendering distributes each dab into every panel it overlaps, and each canvas
-clips its own share.
+the whole length of one wall, whatever that length is — and a stroke belongs to
+a `surface`, not to a panel. Rendering distributes each dab into every panel it
+overlaps, and each canvas clips its own share.
+
+Because `u` is a *fraction* of a wall, it only means anything alongside the map
+it was painted in. That is why a `Stroke` carries `mapId` and `StrokeStore`
+refuses a journal from a different map outright: replayed on the avenue, a
+piece from the alley would land smeared across twenty metres.
 
 Treating panels as logical units caused three bugs at once, all fixed by this:
 
@@ -359,8 +401,8 @@ Treating panels as logical units caused three bugs at once, all fixed by this:
 
 `WallPanel` lays its panels out along the direction its own `uv.x` grows —
 towards -Z on the left wall, +Z on the right — which is what makes
-`(index + uv.x) / PANELS_PER_SIDE` a continuous strip coordinate on both sides.
-Verified: no discontinuity at any of the 18 internal boundaries.
+`(index + uv.x) / panelsPerWall` a continuous strip coordinate on both sides.
+Verified in the alley: no discontinuity at any internal boundary.
 
 ---
 
@@ -392,8 +434,18 @@ per frame.
 
 ```
 src/
-  config.ts                 every tunable constant
-  main.ts                   bootstrap and wiring
+  config.ts                 tuning that applies everywhere
+  main.ts                   bootstrap, wiring, and the screen state machine
+  Arena.ts                  one loaded map and everything that paints on it
+
+  maps/                     tuning that applies to one place
+    types.ts                MapDefinition, MapMetrics, measure()
+    surfaces.ts             the photographic sets, named once
+    skies.ts                weather presets
+    alley.ts                the small one, and the default
+    avenue.ts               20 m of wall, 4 m high
+    corridor.ts             3.6 m wall to wall, nowhere to back off to
+    index.ts                the list, and mapById()
 
   core/
     Engine.ts               renderer, scene, camera, resize
@@ -402,11 +454,13 @@ src/
     Random.ts               seeded PRNG, for reproducible surfaces
 
   world/
-    Street.ts               road, sidewalks, lights
+    Street.ts               road, enclosure, lamps, night — disposable
+    Surfaces.ts             loads a map's wall and road photography
     WallPanel.ts            mesh + canvas + CanvasTexture for one panel
-    WallStrip.ts            one wall side as a continuous paint surface
-    WallSystem.ts           both strips, raycast targets, dirty flush
-    Colliders.ts            corridor clamp
+    WallStrip.ts            one wall as a continuous paint surface
+    WallSystem.ts           every strip of a map, raycast targets, dirty flush
+    Billboard.ts            the ad panels, off by default
+    Colliders.ts            corridor clamp, against the map's bounds
 
   player/
     Player.ts               pointer lock + camera integration
@@ -423,7 +477,7 @@ src/
 
   state/
     types.ts                Stroke, StrokePoint, PaintMessage
-    StrokeStore.ts          per-side journal, undo, repaint, serialize
+    StrokeStore.ts          per-wall journal, undo, repaint, serialize
 
   net/
     Transport.ts            the interface
@@ -433,7 +487,8 @@ src/
   ui/
     styles.css
     Hud.ts                  palette, color shortcuts, alt + wheel resize
-    Menu.ts                 main, pause and controls screens
+    Menu.ts                 main, maps, modes, settings, pause, controls
+    Loading.ts              the progress bar, reused on every map switch
     Inventory.ts            the backpack, opened with I
     CapIcons.ts             cap outlines as SVG, generated from the same geometry
     SprayCursor.ts          the cap outline, sized to the real footprint
@@ -441,7 +496,12 @@ src/
 
 **Dependency rule: arrows always point downwards.** `paint/` knows `net/` only
 through the `Transport` interface. `world/` knows nothing about `paint/`.
-Nothing in `world/` or `player/` imports from `ui/`.
+Nothing in `world/` or `player/` imports from `ui/`. `maps/` sits beside
+`config.ts` at the bottom and imports from neither.
+
+`Arena.ts` is the one exception, and deliberately so: like `main.ts` it is
+wiring, not a layer, so it is allowed to reach across `world/`, `paint/`,
+`state/` and `ui/` to assemble a loaded map out of them.
 
 ---
 
@@ -455,14 +515,18 @@ Nothing in `world/` or `player/` imports from `ui/`.
       Z (street length)
 ```
 
-- The street runs along **Z**, from `-4` to `+4`
-- Width runs along **X**, from `-6` to `+6`
-- Left wall at `x = -6`, paintable face looking towards `+X`
-- Right wall at `x = +6`, paintable face looking towards `-X`
+Every number below is the map's, not the game's — these are the alley's.
+
+- The street runs along **Z**, from `-6` to `+6`
+- Width runs along **X**, from `-3` to `+3`
+- Left wall at `x = -3`, paintable face looking towards `+X`
+- Right wall at `x = +3`, paintable face looking towards `-X`
 - Ground at `y = 0`, wall top at `y = 3`, player eyes at `y = 1.7`
 
-An 8 x 3 m wall each side, two panels per side. Deliberately small: the arena
-is a place to paint one piece, not a map to explore.
+A 12 x 3 m wall each side, three panels per side. Deliberately small: the alley
+is a place to paint one piece, not a map to explore. The avenue and the
+corridor are the same shape at other sizes — `wallX` and `halfLength` come off
+`MapMetrics`, never off a constant.
 
 `PlaneGeometry` is born on the XY plane with its normal at `+Z`. Rotating
 `+PI/2` around Y aims it at `+X` (left wall); `-PI/2` aims it at `-X`.
@@ -471,8 +535,8 @@ UV `(0,0)` is the bottom-left corner seen from the front. Converting to canvas
 pixels flips Y:
 
 ```ts
-const px = uv.x * TEXTURE.SIZE;
-const py = (1 - uv.y) * TEXTURE.SIZE;
+const px = uv.x * strip.widthPx;
+const py = (1 - uv.y) * strip.heightPx;
 ```
 
 ---
@@ -484,11 +548,17 @@ const py = (1 - uv.y) * TEXTURE.SIZE;
   would break silently. Always guard with `if (!hit.uv) return;`.
 - **Upside-down texture.** UV v grows up, canvas y grows down. The conversion is
   `(1 - uv.y) * PANEL_TEXTURE_HEIGHT`.
-- **Never hardcode a canvas dimension.** Panels are rectangular (1152 x 768).
-  Anything that assumes a square canvas silently reintroduces the ellipse bug.
+- **Never hardcode a canvas dimension.** Panels are rectangular, and every map
+  sizes them differently — 768 x 576 in the alley, 640 x 640 on the avenue,
+  560 x 616 in the corridor. Read them off the strip. Anything that assumes a
+  square canvas silently reintroduces the ellipse bug.
+- **Never import a world dimension as a constant.** That was the whole reason
+  a second map was impossible. Wall lengths, heights, panel counts and pixel
+  densities all come off `MapMetrics` or off the `WallStrip` that carries them.
 - **Stroke radii are stored in meters, not pixels.** That keeps the journal
-  independent of `TEXTURE.PIXELS_PER_METER`, so changing the resolution replays
-  old strokes at the right physical size instead of rescaling every tag.
+  independent of the wall resolution — and of which map it was painted in, so
+  a tag laid down at 192 px/m replays at the right physical size on a wall
+  drawn at 224.
 - **Washed out or too dark colors.** Any texture carrying color needs
   `texture.colorSpace = THREE.SRGBColorSpace`, otherwise the conversion is
   applied twice.
@@ -506,27 +576,35 @@ const py = (1 - uv.y) * TEXTURE.SIZE;
   gesture, hence the "Enter the city" overlay.
 - **`getObject()` no longer exists.** In Three.js 0.185, `PointerLockControls`
   extends `Controls` and exposes the camera as `controls.object`.
-- **GPU memory leaks.** If the world is ever rebuilt, call `dispose()` on the
-  old geometries, materials and textures. `WallPanel.dispose()` and
-  `WallSystem.dispose()` exist for this.
+- **GPU memory leaks.** The world *is* rebuilt now, every time somebody
+  changes street. Geometries, materials and textures are GPU allocations the
+  garbage collector cannot see, so every one of them has to be freed by hand:
+  `Arena.dispose()` is the single entry point, and `Street` keeps a `Bin` of
+  everything it made for exactly this.
+- **Nothing may touch the arena mid-swap.** Between `arena.dispose()` and the
+  next one being assigned there is an await. A frame landing in that gap would
+  flush disposed canvases and render freed geometry — hence the `swapping`
+  guard in the frame loop.
 
 ---
 
 ## Performance notes
 
-- **Memory budget:** `TEXTURE.PIXELS_PER_METER` is the single knob. At 192 the
-  panels are 1152 x 768 and 20 of them cost ~68 MB of VRAM; 256 costs ~120 MB.
-  Both dimensions are derived from it, so the resolution stays uniform on both
-  axes — a square canvas on a 6 x 4 m panel is what used to turn every spray
-  into an ellipse.
+- **Memory budget:** each map's `pixelsPerMeter` is the single knob, and it
+  is per map because the bill is per map: the alley costs about 7 MB of VRAM
+  at 192, the avenue about 13 at 160 for six times the wall. Both canvas
+  dimensions derive from it, so the resolution stays uniform on both axes — a
+  square canvas on a rectangular panel is what used to turn every spray into
+  an ellipse.
 - **The real cost is the texture upload.** `texture.needsUpdate = true` resends
   the whole canvas to the GPU. Never set it inside the dab loop; the
   `dirty` + `flush` pair already collapses it to one upload per panel per frame.
 - **Stroke sampling is fixed at 60 Hz**, not per frame. On a 165 Hz monitor a
   per-frame sample would lay down more points per second and paint darker.
-- **If performance gets tight, in order:** drop `TEXTURE.SIZE` to 512, lower
-  `SPRAY.SPECKLES`, keep `getImageData`/`putImageData` out of the loop, and only
-  then consider migrating to a `WebGLRenderTarget` brush pass.
+- **If performance gets tight, in order:** drop the offending map's
+  `pixelsPerMeter`, lower `SPRAY.SPECKLES`, keep `getImageData`/`putImageData`
+  out of the loop, and only then consider migrating to a `WebGLRenderTarget`
+  brush pass.
 
 ---
 
