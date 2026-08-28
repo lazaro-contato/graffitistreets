@@ -20,6 +20,7 @@ export const STRINGS: Record<Locale, Record<string, string>> = {
     "meta.title": "Graffiti Streets",
 
     "menu.kicker.main": "// pegue sua lata",
+    "menu.kicker.maps": "// onde você vai pintar",
     "menu.kicker.modes": "// como você vai andar",
     "menu.kicker.language": "// idioma",
     "menu.play": "Jogar",
@@ -55,6 +56,13 @@ export const STRINGS: Record<Locale, Record<string, string>> = {
     "mode.walk.hint": "Shift corre, espaço pula",
     "mode.free.label": "Voo livre",
     "mode.free.hint": "Espaço sobe, shift desce",
+
+    "map.alley.label": "Beco",
+    "map.alley.hint": "Curto e estreito. É onde se aprende",
+    "map.avenue.label": "Avenida",
+    "map.avenue.hint": "Muro grande e alto — a faixa de cima só no voo livre",
+    "map.corridor.label": "Corredor",
+    "map.corridor.hint": "Apertado: não dá pra se afastar, o jato fica fino",
 
     "bag.title": "Mochila",
     "bag.close": "I ou Esc para fechar",
@@ -123,6 +131,7 @@ export const STRINGS: Record<Locale, Record<string, string>> = {
     "meta.title": "Graffiti Streets — paint graffiti in 3D, free in your browser",
 
     "menu.kicker.main": "// grab a can",
+    "menu.kicker.maps": "// where you will paint",
     "menu.kicker.modes": "// how you will get around",
     "menu.kicker.language": "// language",
     "menu.play": "Play",
@@ -158,6 +167,13 @@ export const STRINGS: Record<Locale, Record<string, string>> = {
     "mode.walk.hint": "Shift runs, space jumps",
     "mode.free.label": "Free flight",
     "mode.free.hint": "Space rises, shift sinks",
+
+    "map.alley.label": "Alley",
+    "map.alley.hint": "Short and narrow. The one to learn in",
+    "map.avenue.label": "Avenue",
+    "map.avenue.hint": "A big, tall wall — the top band needs free flight",
+    "map.corridor.label": "Corridor",
+    "map.corridor.hint": "Tight: nowhere to back off, so the cone stays fine",
 
     "bag.title": "Backpack",
     "bag.close": "I or Esc to close",

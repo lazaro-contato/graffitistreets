@@ -65,6 +65,13 @@ body {
   pointer-events: none;
 }
 
+/* An ID selector outranks the browser's own [hidden] rule, so `display: grid`
+   above would keep a hidden loading screen on top of the game. It is hidden
+   rather than removed because changing map brings it back. */
+#loading[hidden] {
+  display: none;
+}
+
 /* The backdrop is two layers so blur and darkness stay independent: the photo
    blurs, the scrim does not. Overscanned past the frame because blurring an
    element fades its own edges, which would show as a soft border otherwise. */

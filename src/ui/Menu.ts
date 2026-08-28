@@ -5,17 +5,21 @@ import {
   type BrushSizing,
   type MovementMode,
 } from "../config";
+import { MAPS, mapById } from "../maps";
+import type { MapId } from "../maps/types";
 import { LOCALES, type Locale } from "../i18n/strings";
 import { t, getLocale, setLocale } from "../i18n/i18n";
 
 export type MenuScreen =
   | "main"
+  | "maps"
   | "modes"
   | "settings"
   | "controls"
   | "pause";
 
 const BRUSH_KEY = "graffiti.brushSizing";
+const MAP_KEY = "graffiti.map";
 
 function storedBrushSizing(): BrushSizing {
   try {
@@ -27,8 +31,37 @@ function storedBrushSizing(): BrushSizing {
   return DEFAULT_BRUSH_SIZING;
 }
 
+/**
+ * The last street played, if there was one.
+ *
+ * Resolved through `mapById`, which falls back to the default rather than
+ * throwing — a map that has since been renamed or dropped must not lock
+ * somebody out of the game on start-up.
+ */
+export function storedMapId(): MapId {
+  try {
+    return mapById(localStorage.getItem(MAP_KEY)).id;
+  } catch {
+    return mapById(null).id;
+  }
+}
+
 /** Screens reached from another one, which a Back has to return from. */
-const SUB_SCREENS = new Set<MenuScreen>(["modes", "settings", "controls"]);
+const SUB_SCREENS = new Set<MenuScreen>([
+  "maps",
+  "modes",
+  "settings",
+  "controls",
+]);
+
+/**
+ * Where Back goes from a screen that is always reached the same way.
+ *
+ * Choosing a map and choosing how to move are two steps of one flow, so the
+ * second has a fixed parent. Everything else falls back to `returnTo`, which
+ * remembers whether the sheet was opened from the main menu or from a pause.
+ */
+const PARENT: Partial<Record<MenuScreen, MenuScreen>> = { modes: "maps" };
 
 export type MenuHandlers = {
   onPlay: () => void;
@@ -73,6 +106,7 @@ export class Menu {
   private root: HTMLElement;
   private screens = new Map<MenuScreen, HTMLElement>();
   private modeButtons = new Map<MovementMode, HTMLButtonElement>();
+  private mapButtons = new Map<MapId, HTMLButtonElement>();
 
   /** Where the controls sheet goes back to. */
   private returnTo: MenuScreen = "main";
@@ -82,6 +116,9 @@ export class Menu {
 
   mode: MovementMode = "walk";
 
+  /** Restored from the last visit, like the brush setting. */
+  mapId: MapId = storedMapId();
+
   /** Restored from the last visit: a preference, not a per-session choice. */
   brushSizing: BrushSizing = storedBrushSizing();
 
@@ -90,6 +127,7 @@ export class Menu {
 
     for (const screen of [
       "main",
+      "maps",
       "modes",
       "settings",
       "controls",
@@ -103,6 +141,7 @@ export class Menu {
 
     this.root.style.setProperty("--menu-art", `url("${MENU_ART}")`);
 
+    this.buildMapChoices();
     this.buildModeChoices();
     this.buildBrushChoices();
     this.buildLanguageChoices();
@@ -113,8 +152,8 @@ export class Menu {
         ?.dataset.action;
       if (!action) return;
 
-      // Play does not start anything: it asks how you want to move first.
-      if (action === "play") this.show("modes");
+      // Play does not start anything: it asks where, and then how.
+      if (action === "play") this.show("maps");
       else if (action === "resume") this.handlers.onResume();
       else if (action === "quit") this.handlers.onQuit();
       else if (action === "controls") this.show("controls");
@@ -125,6 +164,51 @@ export class Menu {
 
   get isOpen() {
     return this.current !== null;
+  }
+
+  /**
+   * The streets. Built from the map list, so adding one is adding a file and a
+   * pair of strings — nothing here knows how many there are.
+   *
+   * Picking one does not start the game: it goes on to the movement mode, the
+   * way the old Play button did. The choice is stored, so the next visit opens
+   * on the street you were last painting.
+   */
+  private buildMapChoices() {
+    const host = this.root.querySelector("#map-choices")!;
+
+    for (const map of MAPS) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "mode-card";
+      button.innerHTML =
+        `<strong data-i18n="map.${map.id}.label">` +
+        `${t(`map.${map.id}.label`)}</strong>` +
+        `<span data-i18n="map.${map.id}.hint">` +
+        `${t(`map.${map.id}.hint`)}</span>`;
+      button.addEventListener("click", () => this.pickMap(map.id));
+      this.mapButtons.set(map.id, button);
+      host.appendChild(button);
+    }
+
+    this.syncMap();
+  }
+
+  private pickMap(id: MapId) {
+    this.mapId = id;
+    try {
+      localStorage.setItem(MAP_KEY, id);
+    } catch {
+      // The choice still holds for this visit.
+    }
+    this.syncMap();
+    this.show("modes");
+  }
+
+  private syncMap() {
+    for (const [id, button] of this.mapButtons) {
+      button.setAttribute("aria-pressed", String(id === this.mapId));
+    }
   }
 
   private buildModeChoices() {
@@ -274,7 +358,7 @@ export class Menu {
   }
 
   back() {
-    this.show(this.returnTo);
+    this.show((this.current && PARENT[this.current]) ?? this.returnTo);
   }
 
   hide() {

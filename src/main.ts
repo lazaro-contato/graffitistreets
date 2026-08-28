@@ -4,12 +4,13 @@ import { Input } from "./core/Input";
 import { loadArena, fileCount, type Arena, type ArenaDeps } from "./Arena";
 import { loadAdTextures } from "./world/Surfaces";
 import { mapById } from "./maps";
+import type { MapId } from "./maps/types";
 import { Player } from "./player/Player";
 import { SprayCan } from "./paint/SprayCan";
 import { LocalTransport } from "./net/LocalTransport";
 import { buildHud } from "./ui/Hud";
 import { Inventory } from "./ui/Inventory";
-import { Menu, MENU_ART, type MenuScreen } from "./ui/Menu";
+import { Menu, MENU_ART, storedMapId, type MenuScreen } from "./ui/Menu";
 import { LoadingScreen } from "./ui/Loading";
 import { buildPhoto } from "./ui/Photo";
 import { BackpackHint } from "./ui/Hint";
@@ -40,11 +41,13 @@ const authorId = crypto.randomUUID();
 const session = new Session();
 
 /**
- * The street to build. Read before anything is fetched, because the loading
- * bar has to be sized up front and different maps fetch different numbers of
+ * The street the player was last in, restored from their last visit.
+ *
+ * Read before the menu is built, because the loading bar has to be sized
+ * before anything is fetched and different maps fetch different numbers of
  * files.
  */
-const startMap = mapById(null);
+const startMapId = storedMapId();
 
 /** Everything a load waits on besides the map's own files. */
 const CHROME_STEPS =
@@ -55,7 +58,7 @@ const CHROME_STEPS =
 // Counted rather than estimated, so the bar tells the truth — including when
 // the ad panels are switched off and there are two fewer files to wait for.
 const loading = new LoadingScreen(
-  fileCount(startMap) + CHROME_STEPS + (ADS.ENABLED ? 2 : 0),
+  fileCount(mapById(startMapId)) + CHROME_STEPS + (ADS.ENABLED ? 2 : 0),
 );
 
 // One image per language, loaded once and hung in every map, so it sits out
@@ -73,17 +76,61 @@ const arenaDeps: ArenaDeps = {
 };
 
 /**
- * The loaded street.
- *
- * Everything above it outlives a map; everything it owns does not — see
- * Arena.ts for where that line is drawn and why. Nothing swaps it yet, but the
- * seam is what a second street will be plugged into.
+ * The loaded street, and the only thing in this file that is replaced rather
+ * than kept. Everything above outlives a map; everything an arena owns does
+ * not — see Arena.ts for where that line is drawn and why.
  */
-const arena: Arena = await loadArena(startMap, arenaDeps);
+let arena: Arena = await loadArena(mapById(startMapId), arenaDeps);
 loading.advance();
 await loading.breathe();
 
 const player = new Player(engine.camera, input, canvas, arena.metrics);
+
+/**
+ * Journals of streets left behind, kept for as long as the tab is open.
+ *
+ * Nothing is written to disk yet — that is phase 3 — but a switch would
+ * otherwise throw away a piece somebody was half way through, and coming back
+ * to find a bare wall is the wrong answer to "let me look at the other map".
+ */
+const journals = new Map<MapId, string>();
+
+/**
+ * True while a street is being torn down and the next one built.
+ *
+ * The frame loop must not touch the arena across that gap: between `dispose()`
+ * and the new one being assigned there is an await, and a frame landing in it
+ * would flush disposed canvases and render freed geometry.
+ */
+let swapping = false;
+
+async function switchMap(id: MapId) {
+  if (id === arena.metrics.def.id) return;
+
+  if (!arena.store.isEmpty) {
+    journals.set(arena.metrics.def.id, arena.store.serialize());
+  }
+
+  loading.reopen(fileCount(mapById(id)) + 1);
+  // Two frames: one to un-hide the loading screen, one for it to fade in over
+  // the street before the main thread goes away to build panel canvases.
+  await loading.breathe();
+  await loading.breathe();
+
+  swapping = true;
+  arena.dispose();
+  arena = await loadArena(mapById(id), arenaDeps);
+  loading.advance();
+  swapping = false;
+
+  arena.setLocale(getLocale());
+  player.setMap(arena.metrics);
+
+  const saved = journals.get(id);
+  if (saved) arena.store.load(saved);
+
+  await loading.finish();
+}
 
 arena.setLocale(getLocale());
 onLocaleChange(() => arena.setLocale(getLocale()));
@@ -116,15 +163,20 @@ buildHud(can, () => player.controls.isLocked);
 buildPhoto(engine, () => player.controls.isLocked);
 
 // Everything below is one state machine with four states: playing, the menu
-// (main / modes / settings / controls / pause), and the backpack. Only
+// (main / maps / modes / settings / controls / pause), and the backpack. Only
 // "playing" holds pointer lock, and every other state needs a real mouse
 // cursor, so the two must never drift apart — every transition goes through
 // enterStreet or a menu.show.
 
 const menu = new Menu({
-  onPlay: () => {
+  onPlay: async () => {
     player.setMode(menu.mode);
-    enterStreet();
+    // Picking a different street rebuilds the world before the pointer is
+    // asked for. That takes long enough to be worth a refuge: a lock request
+    // arriving late can still be refused, and the menu is where to land.
+    const moving = menu.mapId !== arena.metrics.def.id;
+    if (moving) await switchMap(menu.mapId);
+    enterStreet(moving ? "modes" : null);
   },
   onBrushSizing: (sizing) => can.setSizing(sizing),
   onResume: () => enterStreet(),
@@ -156,8 +208,9 @@ let refuge: MenuScreen | null = null;
  * The screen now comes down in the `lock` listener, once the pointer really is
  * ours. A refused request leaves whatever is on screen exactly where it was.
  *
- * `onRefusal` covers the one case with nothing left to fall back on: closing
- * the backpack shuts it before asking, so a refusal there needs a destination.
+ * `onRefusal` covers the cases with nothing left to fall back on: closing the
+ * backpack shuts it before asking, and moving to another street has already
+ * left the old one.
  */
 function enterStreet(onRefusal: MenuScreen | null = null) {
   if (requesting || player.controls.isLocked) return;
@@ -284,6 +337,8 @@ await loading.finish();
 // stays at one texture upload per panel per frame.
 loop.add((dt) => {
   session.update(player.controls.isLocked);
+  // Mid-swap there is no street to draw and nothing to draw it with.
+  if (swapping) return;
   player.update(dt);
   arena.update(dt, input.isPainting && player.controls.isLocked);
   engine.render();
