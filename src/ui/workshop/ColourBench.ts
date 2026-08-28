@@ -1,4 +1,4 @@
-import { PALETTE } from "../../config";
+import { NEON_PALETTE, PALETTE, isNeon } from "../../config";
 import { inkFor } from "./ColourMath";
 import { t } from "../../i18n/i18n";
 
@@ -8,13 +8,21 @@ export type ColourBenchHandlers = {
   onMix: () => void;
 };
 
+/** The two families, in the order the bench lays them out. */
+const GROUPS = [
+  { key: "stock", colours: PALETTE, mixer: true },
+  { key: "neon", colours: NEON_PALETTE, mixer: false },
+] as const;
+
 /**
- * The colour bench: the ten stock colours, plus a way to mix anything else.
+ * The colour bench: the stock colours, the neon ones, and a way to mix anything
+ * else.
  *
- * The stock ten are the ones the game shipped with and the ones a piece is
- * most likely to be painted in, so they stay a single click. A mixed colour is
- * a deliberate act, so it is a button that opens a dialog rather than a
- * gradient somebody can knock with an elbow.
+ * Neon is its own row with its own heading rather than more swatches on the
+ * end, because it is not more colours — it is a different material. Neon paint
+ * is written into the wall's glow map and lights itself; ordinary paint waits
+ * for a lamp. Somebody choosing between them is choosing between two things,
+ * and a row that ran straight on would hide that.
  */
 export class ColourBench {
   private host = document.getElementById("wk-swatches")!;
@@ -27,32 +35,59 @@ export class ColourBench {
   }
 
   private build() {
-    this.host.setAttribute("aria-label", t("shop.colour.title"));
+    this.host.replaceChildren();
+    this.swatches.clear();
 
-    for (const hex of PALETTE) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "wk-sw";
-      button.style.background = hex;
-      button.title = hex;
-      button.setAttribute("aria-label", hex);
-      button.addEventListener("click", () => this.handlers.onPick(hex));
-      this.host.appendChild(button);
-      this.swatches.set(hex.toLowerCase(), button);
+    for (const group of GROUPS) {
+      const section = document.createElement("div");
+      section.className = "wk-swgroup";
+      section.dataset.group = group.key;
+      section.setAttribute("aria-label", t(`shop.colour.${group.key}`));
+
+      const label = document.createElement("span");
+      label.className = "wk-swgroup__label";
+      label.dataset.i18n = `shop.colour.${group.key}`;
+      label.textContent = t(`shop.colour.${group.key}`);
+
+      const row = document.createElement("div");
+      row.className = "wk-swrow";
+
+      for (const hex of group.colours) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "wk-sw";
+        if (isNeon(hex)) button.classList.add("wk-sw--neon");
+        button.style.background = hex;
+        // The halo behind a neon swatch is the colour itself, so the bench
+        // shows the difference rather than only naming it.
+        button.style.setProperty("--paint", hex);
+        button.title = hex;
+        button.setAttribute("aria-label", hex);
+        button.addEventListener("click", () => this.handlers.onPick(hex));
+        row.appendChild(button);
+        this.swatches.set(hex.toLowerCase(), button);
+      }
+
+      if (group.mixer) row.appendChild(this.buildMixer());
+
+      section.append(label, row);
+      this.host.appendChild(section);
     }
+  }
 
-    this.mixButton = document.createElement("button");
-    this.mixButton.type = "button";
-    this.mixButton.className = "wk-sw wk-sw--mix";
-    this.mixButton.dataset.i18nTitle = "shop.mix.title";
-    this.mixButton.title = t("shop.mix.title");
-    this.mixButton.setAttribute("aria-label", t("shop.mix.title"));
-    this.mixButton.innerHTML =
+  private buildMixer() {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "wk-sw wk-sw--mix";
+    button.title = t("shop.mix.title");
+    button.setAttribute("aria-label", t("shop.mix.title"));
+    button.innerHTML =
       '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" ' +
       'stroke="currentColor" stroke-width="1.7">' +
       '<path d="M11 2.5l2.5 2.5L6 12.5 3 13l.5-3z"/></svg>';
-    this.mixButton.addEventListener("click", () => this.handlers.onMix());
-    this.host.appendChild(this.mixButton);
+    button.addEventListener("click", () => this.handlers.onMix());
+    this.mixButton = button;
+    return button;
   }
 
   render(colour: string) {
@@ -72,5 +107,10 @@ export class ColourBench {
     this.mixButton.style.color = stock ? "" : inkFor(current);
 
     this.readout.textContent = current.toUpperCase();
+  }
+
+  /** Rebuilds after a language change, since the group headings are copy. */
+  relocalise() {
+    this.build();
   }
 }

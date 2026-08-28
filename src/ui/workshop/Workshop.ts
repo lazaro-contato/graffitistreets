@@ -174,6 +174,7 @@ export class Workshop {
   /** Repaints copy and generated art after the language changes. */
   relocalise() {
     this.caps.invalidate();
+    this.colours.relocalise();
     this.buildKeybar();
     this.render();
   }

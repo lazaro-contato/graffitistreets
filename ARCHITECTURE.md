@@ -164,6 +164,40 @@ Most caps do not turn with the stroke, and that is the point of the flat ones:
 a calligraphy cap paints thick across its edge and thin along it, which only
 works from a fixed angle. The roller is the exception — see below.
 
+## Neon paint glows
+
+Neon is not a brighter colour, it is a different material. Every panel carries
+a **second canvas** as the material's `emissiveMap`, and neon paint is written
+into it as well as onto the colour map — so it lights itself instead of waiting
+for a lamp. Every map is night with a lot of dark between two hard lamps, which
+is the one setting where this reads as anything at all.
+
+Four things this has to get right:
+
+- **The glow map is opaque black, and ordinary paint paints it black.** An
+  `emissiveMap` is sampled as RGB and its alpha is ignored, so "no light here"
+  must be a black pixel. Erasing with `destination-out` looks correct on the
+  canvas and does nothing at all on the wall: it takes the alpha down and
+  leaves the colour behind, and the wall keeps glowing through paint that
+  covered it. Painting the glow black through the same dab is both simpler and
+  the only version that works.
+- **It costs a quarter, not double.** The glow map is half resolution on each
+  axis — see `NEON.MAP_SCALE`. It is light rather than detail, and nobody can
+  see the edge of a glow.
+- **Panels that have never seen neon skip it entirely.** `WallPanel.hasGlow`
+  keeps the second stamp off the hot path for the common case, since ordinary
+  paint only has to blacken a glow map that has something on it.
+- **`paintBase()` blacks it out**, so undo and journal replay work on neon for
+  free: the wall goes back to bare and the surviving strokes put their own
+  light back as they are drawn again.
+
+Whether a colour glows is looked up from the palette rather than carried on the
+stroke, which leaves `PaintMessage` untouched — no new field to sync, migrate
+or forget. The trade is that a colour mixed by hand to a neon value glows too,
+which is the right outcome: what makes paint neon is the pigment.
+
+---
+
 ## Eight cans, four presets
 
 What the player carries is a **loadout**, not a colour and a cap: eight cans,
@@ -548,7 +582,8 @@ const py = (1 - uv.y) * TEXTURE.SIZE;
 
 ## Performance notes
 
-- **Memory budget:** `TEXTURE.PIXELS_PER_METER` is the single knob. At 192 the
+- **Memory budget:** `TEXTURE.PIXELS_PER_METER` is the single knob, and the
+  glow map adds a quarter on top of whatever it sets. At 192 the
   panels are 1152 x 768 and 20 of them cost ~68 MB of VRAM; 256 costs ~120 MB.
   Both dimensions are derived from it, so the resolution stays uniform on both
   axes — a square canvas on a 6 x 4 m panel is what used to turn every spray

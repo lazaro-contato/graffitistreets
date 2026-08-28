@@ -1013,6 +1013,23 @@ a.menu-item {
 /* Colour ----------------------------------------------------------------- */
 
 .wk-swatches {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.wk-swgroup {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.wk-swgroup__label {
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--wk-faint);
+}
+
+.wk-swrow {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
@@ -1042,6 +1059,19 @@ a.menu-item {
   border-color: #fff;
   transform: scale(1.12);
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.16);
+}
+
+/* Neon paint lights itself on the wall, so its swatch does too. The halo is
+   the swatch's own colour, which is the cheapest possible way to say "this one
+   is a different material" without a word of copy. */
+.wk-sw--neon {
+  box-shadow: 0 0 0.55rem 0.1rem var(--paint);
+}
+
+.wk-sw--neon[aria-pressed="true"] {
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.16),
+    0 0 0.8rem 0.15rem var(--paint);
 }
 
 /* The mixer button doubles as the swatch for a colour that has none: when a

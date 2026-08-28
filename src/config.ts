@@ -666,3 +666,54 @@ export const PALETTE = [
   "#ff4fa3",
 ] as const;
 
+/**
+ * Neon paint, which is not a brighter colour but a different material: it is
+ * written into a second map on the wall and emits light of its own.
+ *
+ * Every map in the game is night, lit by two hard lamps with a lot of dark
+ * between them — which is the one setting where this reads as anything at all.
+ * On a flat daylit wall it would be indistinguishable from a saturated colour.
+ *
+ * Deliberately none of these is a near-match for a colour in PALETTE. A neon
+ * cyan beside an ordinary cyan that differs only in glow is a pair people pick
+ * between by accident.
+ */
+export const NEON_PALETTE = [
+  "#39ff14",
+  "#00f0ff",
+  "#ff00e6",
+  "#ff073a",
+  "#faff00",
+  "#7d00ff",
+] as const;
+
+const NEON_SET = new Set<string>(NEON_PALETTE);
+
+/**
+ * Whether a colour glows.
+ *
+ * Looked up from the palette rather than carried on the stroke, which keeps
+ * `PaintMessage` exactly as it was — no new field to sync, migrate or forget.
+ * The trade is that a colour mixed by hand to one of these exact values glows
+ * too. That is a fair outcome rather than a bug: what makes paint neon is the
+ * pigment, and the pigment is the number.
+ */
+export const isNeon = (hex: string) => NEON_SET.has(hex.toLowerCase());
+
+export const NEON = {
+  /**
+   * How hard the paint emits, before tone mapping. Above 1 on purpose: the
+   * renderer is ACES filmic, which rolls the top off into a soft falloff
+   * instead of clipping, and that roll-off is what reads as a glow rather than
+   * as a flat bright patch.
+   */
+  INTENSITY: 1.6,
+  /**
+   * Resolution of the glow map, as a fraction of the panel's.
+   *
+   * Half. It is light rather than detail — nobody can see the edge of a glow —
+   * and this is the difference between the feature costing 25% more VRAM per
+   * panel and costing 100% more.
+   */
+  MAP_SCALE: 0.5,
+} as const;

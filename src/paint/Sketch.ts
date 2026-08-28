@@ -1,7 +1,7 @@
 import { stampDab } from "./Brush";
 import { dabSteps } from "./StrokeMath";
 import { TwistTracker } from "./Twist";
-import { CAP_BY_ID, type CapId } from "../config";
+import { CAP_BY_ID, isNeon, type CapId } from "../config";
 import type { StrokePoint } from "../state/types";
 import { paintConcrete } from "../world/Concrete";
 
@@ -19,6 +19,10 @@ import { paintConcrete } from "../world/Concrete";
  * left is bookkeeping: a journal, and the conversion between the normalised
  * coordinates a stroke is stored in and the pixels of this particular canvas.
  */
+
+/** How much wider than the mark the faked halo spreads, and how faint it is. */
+const NEON_HALO = 2.1;
+const NEON_HALO_ALPHA = 0.34;
 
 /** A stroke on a sketch surface. The same shape a wall stroke has, minus the
  *  identity a wall needs — a sketch has no map, no side and no author. */
@@ -69,18 +73,25 @@ function stampAt(
   cap: CapId,
   twist: number,
 ) {
-  stampDab(
-    ctx,
-    u * size.widthPx,
-    // UV v grows upwards, canvas y grows downwards — the same flip the wall
-    // renderer does.
-    (1 - v) * size.heightPx,
-    radiusMeters * size.pixelsPerMeter,
-    color,
-    alpha,
-    cap,
-    twist,
-  );
+  const x = u * size.widthPx;
+  // UV v grows upwards, canvas y grows downwards — the same flip the wall
+  // renderer does.
+  const y = (1 - v) * size.heightPx;
+  const radiusPx = radiusMeters * size.pixelsPerMeter;
+
+  stampDab(ctx, x, y, radiusPx, color, alpha, cap, twist);
+
+  // A sketch is a flat canvas with no lighting, so neon has to be faked here or
+  // it would preview as an ordinary bright colour and the whole point of the
+  // category would be invisible until you were already out on the street. An
+  // additive pass, wider and much fainter, stands in for the emissive halo the
+  // real wall gets from its glow map.
+  if (isNeon(color)) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    stampDab(ctx, x, y, radiusPx * NEON_HALO, color, alpha * NEON_HALO_ALPHA, cap, twist);
+    ctx.restore();
+  }
 }
 
 /**
