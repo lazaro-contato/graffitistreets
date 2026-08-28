@@ -35,6 +35,7 @@ English.** Only `context.md`, the original spec, is in Portuguese.
 | 2.7   | Smaller arena (8 x 3 m walls) and a free flight mode          | Done   |
 | 2.8   | Menu: main, pause, controls, and mode as a setting            | Done   |
 | 2.9   | Menu artwork, display face, loading spinner, Portuguese copy  | Done   |
+| 2.10  | The can workshop: ten caps, eight cans, four presets           | Done   |
 | 3     | Polish: audio, IndexedDB persistence, PNG export, mobile     | To do  |
 | 4     | Server persistence (journal + WebP snapshots)                | To do  |
 | 5     | Multiplayer cities (Colyseus, avatars, lobby)                | To do  |
@@ -145,19 +146,44 @@ Two categories, and the split is not cosmetic:
 - **Tools** (calligraphy, marker, roller) are pressed against the wall. They
   mark the same at any range.
 
-Six entries in all. The `triangle` *shape* primitive is still in
+Ten entries in all — a size ladder of cones (skinny, circle, fat, super), two
+texture variants of the same width (flare is grain, mist is a fade), a square,
+and three flat tools. The `triangle` *shape* primitive is still in
 `CapGeometry`, unused by any current entry — it costs nothing and keeps adding
 a wedge cap a one-line change.
 
 A cap is **pure data** in `config.ts` — a category, a base outline (ellipse,
 rect or triangle), an aspect ratio, an angle, and how the paint comes out
 (size, softness, flow, grain). Adding one is adding a row. There is no per-cap
-branching in the brush, and the backpack builds its pockets from the
-categories, so a new entry needs no UI work at all.
+branching in the brush, and the workshop builds its rack from the list, so a
+new entry needs no UI work at all — including its card, whose sample is
+painted with the real brush rather than drawn by hand.
 
 Most caps do not turn with the stroke, and that is the point of the flat ones:
 a calligraphy cap paints thick across its edge and thin along it, which only
 works from a fixed angle. The roller is the exception — see below.
+
+## Eight cans, four presets
+
+What the player carries is a **loadout**, not a colour and a cap: eight cans,
+each holding a cap, a colour, a width and a strength, reached in the street
+with 1-8 or the wheel. Four preset slots hold four of those loadouts.
+
+`state/Loadout.ts` owns it and persists every change immediately — there is no
+Save button, because a workshop where an edit can be lost is a workshop people
+back out of. `SprayCan` is downstream: `main.ts` equips the selected can into
+it and nothing else writes to it.
+
+Two things this has to get right:
+
+- **Anything read off disk is clamped before it is believed.** A cap id that no
+  longer exists, a size out of range, a colour that is not a colour — all fall
+  back to the default for that slot rather than reaching the brush.
+- **The practice wall is the real paint.** It shares the base coat, the brush,
+  the dab spacing and the twist tracker with the street. A preview with its own
+  painting code would answer a different question from the one being asked.
+
+---
 
 ## The roller turns with your wrist
 
@@ -237,7 +263,7 @@ Four states, and only one of them holds the pointer:
 | menu: main | free | Play, mode setting, Controls |
 | menu: pause | free | Resume, Controls, Quit to menu |
 | menu: controls | free | key list, Back |
-| backpack | free | colour swatches and cap slots |
+| workshop | free | caps, colours, the eight cans, a practice wall |
 
 Everything except `playing` needs a real mouse cursor, so lock state and screen
 state must never drift apart. `main.ts` owns the machine: every way back into
@@ -246,7 +272,7 @@ reason — Esc, the tab going to the background — raises the pause screen.
 
 Two things this has to get right:
 
-- **Not every unlock is the player leaving.** Opening the backpack releases the
+- **Not every unlock is the player leaving.** Opening the workshop releases the
   lock deliberately, so the unlock listener checks for that before pausing.
 - **A lock request can be refused.** Browsers reject one that arrives too soon
   after an Esc exit, and there is no way to ask in advance. `enterStreet` takes
@@ -434,7 +460,14 @@ src/
     styles.css
     Hud.ts                  palette, color shortcuts, alt + wheel resize
     Menu.ts                 main, pause and controls screens
-    Inventory.ts            the backpack, opened with I
+    workshop/
+      Workshop.ts           the screen: composes the sectors, owns the keys
+      CapRack.ts            cap cards, samples painted with the real brush
+      ColourBench.ts        the ten stock colours, and the way to mix others
+      CanRack.ts            eight cans and four presets
+      PracticeWall.ts       a wall to try a can on, and the two dials
+      ColourPicker.ts       the mixer, the one screen a choice can be dropped on
+      ColourMath.ts         hex/rgb/hsv, and which ink reads on which paint
     CapIcons.ts             cap outlines as SVG, generated from the same geometry
     SprayCursor.ts          the cap outline, sized to the real footprint
 ```
