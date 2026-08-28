@@ -58,6 +58,9 @@ export const STRINGS: Record<Locale, Record<string, string>> = {
 
     "bag.title": "Mochila",
     "bag.close": "I ou Esc para fechar",
+    "bag.colour.label": "Cores",
+    "bag.colour.hint":
+      "Aperte 1 a 0 ou gire o scroll pra trocar sem abrir a mochila",
     "bag.cap.label": "Caps",
     "bag.cap.hint":
       "Afaste-se para alcançar mais, chegue perto para um traço fino e forte",
@@ -79,6 +82,7 @@ export const STRINGS: Record<Locale, Record<string, string>> = {
 
     "hint.backpack": "para abrir a mochila",
     "hint.photo": "tirar uma foto",
+    "hint.colour": "ou scroll trocam a cor",
 
     "controls.moving.title": "Movimentação",
     "controls.walk.key": "WASD / setas",
@@ -161,6 +165,9 @@ export const STRINGS: Record<Locale, Record<string, string>> = {
 
     "bag.title": "Backpack",
     "bag.close": "I or Esc to close",
+    "bag.colour.label": "Colours",
+    "bag.colour.hint":
+      "Press 1 to 0, or turn the wheel, to change without opening the bag",
     "bag.cap.label": "Caps",
     "bag.cap.hint": "Step back for reach, step in for a tight line that bites",
     "bag.tool.label": "Tools",
@@ -181,6 +188,7 @@ export const STRINGS: Record<Locale, Record<string, string>> = {
 
     "hint.backpack": "to open the backpack",
     "hint.photo": "take a photo",
+    "hint.colour": "or the wheel changes the colour",
 
     "controls.moving.title": "Getting around",
     "controls.walk.key": "WASD / arrows",

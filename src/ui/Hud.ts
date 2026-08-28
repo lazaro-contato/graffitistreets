@@ -1,4 +1,5 @@
 import { PALETTE } from "../config";
+import { keyForColour, colourForKey } from "./PaletteKeys";
 import type { SprayCan } from "../paint/SprayCan";
 
 /** Firefox reports wheel deltas in lines, and page mode exists on some setups. */
@@ -68,6 +69,13 @@ function createWheelStepper() {
 /**
  * Builds the colour palette and wires the keyboard and wheel shortcuts.
  *
+ * Each swatch carries the key that picks it, which is the answer to the
+ * question people kept arriving with. The palette is on screen the whole time
+ * you play, but it is not clickable then — pointer lock has the cursor — so
+ * for anyone who had not found 1-0 or the wheel it was a row of colours with
+ * no way in. Printing the key under the colour is what turns it from a readout
+ * into an instruction.
+ *
  * `isPlaying` gates the wheel: the backpack panel scrolls on its own, so
  * without it, reading through the caps would silently repaint your can.
  */
@@ -75,19 +83,47 @@ export function buildHud(can: SprayCan, isPlaying: () => boolean) {
   const palette = document.getElementById("palette")!;
   const swatches: HTMLButtonElement[] = [];
 
-  const selectIndex = (index: number) => {
-    can.setColor(PALETTE[index]);
+  /** Where the can's colour sits in the palette right now. */
+  const currentIndex = () => {
+    const found = (PALETTE as readonly string[]).indexOf(can.color);
+    return found < 0 ? 0 : found;
+  };
+
+  const syncColour = () => {
+    const index = currentIndex();
     swatches.forEach((swatch, i) =>
       swatch.setAttribute("aria-pressed", String(i === index)),
     );
   };
 
+  // The ring is repainted from the can rather than from the click, so a colour
+  // picked in the backpack moves it too.
+  can.onChange((what) => {
+    if (what === "color") syncColour();
+  });
+
+  const selectIndex = (index: number) => can.setColor(PALETTE[index]);
+
   PALETTE.forEach((hex, index) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.style.background = hex;
-    button.setAttribute("aria-pressed", String(hex === can.color));
     button.title = hex;
+
+    const dot = document.createElement("span");
+    dot.className = "swatch-dot";
+    dot.style.background = hex;
+    button.appendChild(dot);
+
+    // A colour past the tenth has no key, and gets no label rather than a
+    // misleading one.
+    const key = keyForColour(index);
+    if (key) {
+      const label = document.createElement("span");
+      label.className = "swatch-key";
+      label.textContent = key;
+      button.appendChild(label);
+    }
+
     button.addEventListener("click", (e) => {
       e.stopPropagation();
       selectIndex(index);
@@ -96,19 +132,13 @@ export function buildHud(can: SprayCan, isPlaying: () => boolean) {
     palette.appendChild(button);
   });
 
-  /** Where the can's colour sits in the palette right now. */
-  const currentIndex = () => {
-    const found = (PALETTE as readonly string[]).indexOf(can.color);
-    return found < 0 ? 0 : found;
-  };
+  syncColour();
 
   // Keys 1-9 and 0 pick a color
   window.addEventListener("keydown", (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    const n = parseInt(e.key, 10);
-    if (Number.isNaN(n)) return;
-    const index = n === 0 ? 9 : n - 1;
-    if (index < PALETTE.length) selectIndex(index);
+    const index = colourForKey(e.key);
+    if (index !== null) selectIndex(index);
   });
 
   const sizeStep = createWheelStepper();

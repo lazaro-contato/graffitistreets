@@ -22,7 +22,7 @@ import { Inventory } from "./ui/Inventory";
 import { Menu, MENU_ART, type MenuScreen } from "./ui/Menu";
 import { LoadingScreen } from "./ui/Loading";
 import { buildPhoto } from "./ui/Photo";
-import { BackpackHint } from "./ui/Hint";
+import { backpackHint, colourHint } from "./ui/Hint";
 import { GITHUB_ICON } from "./ui/Icons";
 import { wireLink } from "./ui/Links";
 import { Session } from "./telemetry/Session";
@@ -112,6 +112,14 @@ transport.onMessage((message) => {
   }
 });
 
+// Retired the first time somebody changes colour, which is proof they have
+// learned the thing it exists to teach. Fitting a different cap is not that,
+// hence the check on what actually changed.
+const colourTip = colourHint();
+can.onChange((what) => {
+  if (what === "color") colourTip.dismiss();
+});
+
 buildHud(can, () => player.controls.isLocked);
 
 // Times the visit and reports it to Umami as the page goes away — how long the
@@ -137,7 +145,7 @@ const menu = new Menu({
 });
 
 const inventory = new Inventory(can, () => closeBackpack());
-const hint = new BackpackHint();
+const hint = backpackHint();
 
 wireLink("menu-submit", LINKS.SUBMIT[getLocale()]);
 wireLink("menu-bug", LINKS.BUG);

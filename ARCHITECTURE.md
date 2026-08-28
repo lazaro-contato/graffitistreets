@@ -237,7 +237,7 @@ Four states, and only one of them holds the pointer:
 | menu: main | free | Play, mode setting, Controls |
 | menu: pause | free | Resume, Controls, Quit to menu |
 | menu: controls | free | key list, Back |
-| backpack | free | cap slots |
+| backpack | free | colour swatches and cap slots |
 
 Everything except `playing` needs a real mouse cursor, so lock state and screen
 state must never drift apart. `main.ts` owns the machine: every way back into
