@@ -161,13 +161,27 @@ const menu = new Menu({
   },
   onBrushSizing: (sizing) => can.setSizing(sizing),
   onResume: () => enterStreet(),
-  onWorkshop: () => openWorkshop(),
-  onQuit: () => menu.show("main"),
+  onWorkshop: () => {
+    // Reachable while the workshop is already open, since the pause screen can
+    // be raised over it. There it means "put me back", not "open it again".
+    if (workshop.isOpen) menu.hide();
+    else openWorkshop();
+  },
+  onQuit: () => {
+    // The pause screen can be raised over the workshop, and the main menu must
+    // not be left floating on top of it.
+    workshop.close();
+    menu.show("main");
+  },
 });
 
-// The workshop only ever closes itself with Escape, hence `false`: see
-// closeWorkshop for why that key cannot ask for the pointer straight away.
-const workshop = new Workshop(loadout, { onClose: () => closeWorkshop(false) });
+const workshop = new Workshop(loadout, {
+  onClose: () => closeWorkshop(),
+  // Escape over the workshop pauses without shutting it, and pressing it again
+  // puts the workshop back. Anything else would make Escape a dead key here,
+  // since it cannot close and cannot resume.
+  onPause: () => (menu.isOpen ? menu.hide() : menu.show("pause")),
+});
 const hint = workshopHint();
 
 // The workshop generates copy and cap samples, so it has to be told: one pass
@@ -261,45 +275,23 @@ function openWorkshop() {
   releasePointer();
 }
 
-/** Long enough for the browser to be done with the Escape that closed us. */
-const RELOCK_DELAY_MS = 80;
-
 /**
  * Shuts the workshop and puts the player back in the street.
  *
- * Always the street, whichever door they came in by. The workshop is only
- * reachable from inside a game, so there is nowhere else that closing it could
+ * Always the street, whichever door they came in by: the workshop is only
+ * reachable from inside a game, so there is nowhere else closing it could
  * sensibly mean.
  *
- * `now` is false when Escape closed it, and the delay that buys is the whole
- * point. A pointer lock requested from inside an Escape keydown is not simply
- * refused — Chrome grants it and then revokes it for that very keypress. The
- * grant runs the `lock` listener, so the street comes back; the revocation
- * arrives a moment later as an ordinary unlock, and that is what was raising
- * the pause screen over it. "Back to the street, paused" was those two events
- * in order.
- *
- * Asked for on a later task instead, the keypress is over: the request either
- * succeeds and stays, or is refused and the click handler below picks it up.
- * Neither can pause the game.
+ * It is only ever reached from the X or from I, and that is the point. Both
+ * are gestures a browser will grant a pointer lock for, so the street comes
+ * back playable with nothing left to click. Escape pauses instead — see the
+ * workshop's onPause.
  */
-function closeWorkshop(now: boolean) {
+function closeWorkshop() {
   if (!workshop.isOpen) return;
-  // Shut on the spot: pressing I again has to close it whether or not the
-  // pointer comes back.
   workshop.close();
   hud.hidden = false;
-
-  if (now) {
-    enterStreet();
-    return;
-  }
-
-  window.setTimeout(() => {
-    // Escape twice in quick succession, or straight back into the workshop,
-    // must not be undone by a request made for the first one.
-    if (!workshop.isOpen && !menu.isOpen) enterStreet();
-  }, RELOCK_DELAY_MS);
+  enterStreet();
 }
 
 /**
@@ -379,7 +371,10 @@ window.addEventListener("keydown", (e) => {
   }
 
   if (e.code === "KeyI") {
-    if (workshop.isOpen) closeWorkshop(true);
+    // While a menu is up over the workshop it owns the keyboard: closing
+    // underneath it would leave the menu floating over the street.
+    if (menu.isOpen) return;
+    if (workshop.isOpen) closeWorkshop();
     else if (player.controls.isLocked) openWorkshop();
     return;
   }

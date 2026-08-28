@@ -729,7 +729,7 @@ a.menu-item {
 .wk-top {
   flex: none;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 1rem;
   padding: 0.7rem 0.2rem 0;
 }
@@ -750,6 +750,7 @@ a.menu-item {
 
 .wk-esc {
   margin: 0 0 0 auto;
+  flex: none;
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -757,6 +758,41 @@ a.menu-item {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--wk-faint);
+}
+
+/* The way out, and it looks like one. Red and solid rather than another
+   outlined chip, because everything else along this bar is a hint and this is
+   the only thing on the screen that does something irreversible to it. */
+.wk-x {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  margin-left: 0.6rem;
+  border: 0;
+  border-radius: 0.25rem;
+  background: #e02020;
+  color: #fff;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    transform 0.12s ease;
+}
+
+.wk-x:hover {
+  background: #ff3b30;
+  transform: scale(1.06);
+}
+
+.wk-x:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.wk-x svg {
+  width: 0.95rem;
+  height: 0.95rem;
 }
 
 #workshop kbd {

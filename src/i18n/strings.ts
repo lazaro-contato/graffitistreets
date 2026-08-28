@@ -58,7 +58,8 @@ export const STRINGS: Record<Locale, Record<string, string>> = {
 
     "shop.title": "Oficina de latas",
     "shop.crumb": "Monte as oito latas que você leva pra rua",
-    "shop.close": "voltar pra rua",
+    "shop.close": "fecha a oficina",
+    "shop.closeButton": "Fechar a oficina",
 
     "shop.caps.title": "Caps",
     "shop.caps.hint": "A ponta define o traço",
@@ -94,10 +95,12 @@ export const STRINGS: Record<Locale, Record<string, string>> = {
     "shop.keys.caps.action": "passar de cap",
     "shop.keys.undo.key": "Z",
     "shop.keys.undo.action": "desfazer no muro",
-    "shop.keys.clear.key": "X",
+    "shop.keys.clear.key": "C",
     "shop.keys.clear.action": "limpar o muro",
-    "shop.keys.close.key": "Esc",
-    "shop.keys.close.action": "voltar pra rua",
+    "shop.keys.close.key": "I",
+    "shop.keys.close.action": "fechar e voltar pra rua",
+    "shop.keys.pause.key": "Esc",
+    "shop.keys.pause.action": "pausar o jogo",
 
     "cap.category.cap": "jato",
     "cap.category.tool": "encostada",
@@ -209,7 +212,8 @@ export const STRINGS: Record<Locale, Record<string, string>> = {
 
     "shop.title": "Can workshop",
     "shop.crumb": "Load the eight cans you take out with you",
-    "shop.close": "back to the street",
+    "shop.close": "closes the workshop",
+    "shop.closeButton": "Close the workshop",
 
     "shop.caps.title": "Caps",
     "shop.caps.hint": "The tip decides the line",
@@ -245,10 +249,12 @@ export const STRINGS: Record<Locale, Record<string, string>> = {
     "shop.keys.caps.action": "step through caps",
     "shop.keys.undo.key": "Z",
     "shop.keys.undo.action": "undo on the wall",
-    "shop.keys.clear.key": "X",
+    "shop.keys.clear.key": "C",
     "shop.keys.clear.action": "clear the wall",
-    "shop.keys.close.key": "Esc",
-    "shop.keys.close.action": "back to the street",
+    "shop.keys.close.key": "I",
+    "shop.keys.close.action": "close and go back",
+    "shop.keys.pause.key": "Esc",
+    "shop.keys.pause.action": "pause the game",
 
     "cap.category.cap": "cone",
     "cap.category.tool": "flat",

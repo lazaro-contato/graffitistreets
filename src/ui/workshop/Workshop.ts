@@ -8,11 +8,26 @@ import { PracticeWall } from "./PracticeWall";
 import { t } from "../../i18n/i18n";
 
 /** The shortcuts printed along the bottom, as i18n key stems. */
-const KEYS = ["cans", "caps", "undo", "clear", "close"] as const;
+const KEYS = ["cans", "caps", "undo", "clear", "close", "pause"] as const;
 
 export type WorkshopHandlers = {
-  /** Called when the workshop is dismissed, so the caller can retake the lock. */
+  /**
+   * The workshop is done with: the X, or I.
+   *
+   * Both are gestures a browser will take a pointer lock for, which is why
+   * they are the only two ways out. Escape is not one of them — see onPause.
+   */
   onClose: () => void;
+  /**
+   * Escape, which pauses over the workshop rather than closing it.
+   *
+   * Escape cannot hand the pointer back: a lock requested from it is granted
+   * and then revoked by that same keypress. Closing on it therefore always
+   * dropped the player into the street with no pointer, and the game unable to
+   * tell that from having walked away. So Escape does the thing it does
+   * everywhere else in the game instead, and the workshop stays where it is.
+   */
+  onPause: () => void;
 };
 
 /**
@@ -68,6 +83,10 @@ export class Workshop {
     this.wall = new PracticeWall({
       onDial: (change) => this.loadout.editCurrent(change),
     });
+
+    const close = document.getElementById("wk-close")!;
+    close.setAttribute("aria-label", t("shop.closeButton"));
+    close.addEventListener("click", () => this.handlers.onClose());
 
     this.buildKeybar();
     this.loadout.onChange(() => this.render());
@@ -143,7 +162,7 @@ export class Workshop {
 
       if (event.key === "Escape") {
         event.preventDefault();
-        this.handlers.onClose();
+        this.handlers.onPause();
         return;
       }
 
@@ -167,7 +186,9 @@ export class Workshop {
       }
 
       if (event.key === "z" || event.key === "Z") this.wall.undo();
-      else if (event.key === "x" || event.key === "X") this.wall.clear();
+      // C, not X. There is a red X in the corner that closes the workshop, and
+      // one letter cannot mean both "shut this" and "wipe the wall".
+      else if (event.key === "c" || event.key === "C") this.wall.clear();
     });
   }
 
