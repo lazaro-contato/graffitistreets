@@ -433,11 +433,11 @@ export const CAP_CATEGORIES: readonly { id: CapCategory }[] = [
 
 export type CapId =
   | "skinny"
-  | "circle"
-  | "fat"
-  | "super"
-  | "flare"
-  | "mist"
+  | "standard"
+  | "nyfat"
+  | "ultrafat"
+  | "splatter"
+  | "softcap"
   | "square"
   | "calligraphy"
   | "marker"
@@ -485,7 +485,7 @@ export const CAPS: readonly CapDefinition[] = [
     twists: false,
   },
   {
-    id: "circle",
+    id: "standard",
     category: "cap",
     shape: "ellipse",
     aspect: 1,
@@ -497,7 +497,7 @@ export const CAPS: readonly CapDefinition[] = [
     twists: false,
   },
   {
-    id: "fat",
+    id: "nyfat",
     category: "cap",
     shape: "ellipse",
     aspect: 1,
@@ -510,7 +510,7 @@ export const CAPS: readonly CapDefinition[] = [
     twists: false,
   },
   {
-    id: "super",
+    id: "ultrafat",
     category: "cap",
     shape: "ellipse",
     aspect: 1,
@@ -522,7 +522,7 @@ export const CAPS: readonly CapDefinition[] = [
     twists: false,
   },
   {
-    id: "flare",
+    id: "splatter",
     category: "cap",
     shape: "ellipse",
     aspect: 1,
@@ -534,7 +534,7 @@ export const CAPS: readonly CapDefinition[] = [
     twists: false,
   },
   {
-    id: "mist",
+    id: "softcap",
     category: "cap",
     shape: "ellipse",
     aspect: 1,
@@ -633,11 +633,11 @@ export const LOADOUT = {
  */
 export const DEFAULT_CANS: readonly CanSpec[] = [
   { cap: "skinny", color: "#111111", size: 1, flow: 1 },
-  { cap: "circle", color: "#ffffff", size: 1, flow: 1 },
-  { cap: "fat", color: "#e02020", size: 1, flow: 1 },
-  { cap: "super", color: "#1e5fe0", size: 1, flow: 1 },
-  { cap: "flare", color: "#ffd400", size: 1, flow: 1 },
-  { cap: "mist", color: "#00b8d4", size: 1, flow: 1 },
+  { cap: "standard", color: "#ffffff", size: 1, flow: 1 },
+  { cap: "nyfat", color: "#e02020", size: 1, flow: 1 },
+  { cap: "ultrafat", color: "#1e5fe0", size: 1, flow: 1 },
+  { cap: "splatter", color: "#ffd400", size: 1, flow: 1 },
+  { cap: "softcap", color: "#00b8d4", size: 1, flow: 1 },
   { cap: "calligraphy", color: "#2ecc40", size: 1, flow: 1 },
   { cap: "roller", color: "#8b2fd4", size: 1, flow: 1 },
 ];
@@ -647,7 +647,7 @@ export const CAP_BY_ID = new Map(CAPS.map((cap) => [cap.id, cap]));
 export const capsIn = (category: CapCategory) =>
   CAPS.filter((cap) => cap.category === category);
 
-export const DEFAULT_CAP: CapId = "circle";
+export const DEFAULT_CAP: CapId = "standard";
 
 /** The base radius expressed in texture pixels, for canvas-space code. */
 export const BASE_RADIUS_PX =
@@ -665,3 +665,4 @@ export const PALETTE = [
   "#8b2fd4",
   "#ff4fa3",
 ] as const;
+

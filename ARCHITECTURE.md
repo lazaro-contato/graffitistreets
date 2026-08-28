@@ -141,14 +141,15 @@ footprint and opacity do not move with range at all — see below.
 
 Two categories, and the split is not cosmetic:
 
-- **Caps** (circle, square, flare) are spray cones. Range drives their width
+- **Caps** (skinny, standard, NY fat, …) are spray cones. Range drives their width
   and their bite.
 - **Tools** (calligraphy, marker, roller) are pressed against the wall. They
   mark the same at any range.
 
-Ten entries in all — a size ladder of cones (skinny, circle, fat, super), two
-texture variants of the same width (flare is grain, mist is a fade), a square,
-and three flat tools. The `triangle` *shape* primitive is still in
+Ten entries in all — a size ladder of cones (skinny, standard, NY fat, ultra
+fat), two variants of one width (splatter is grain, soft cap is a fade), a
+square, and three flat tools. The names are the scene's own, in English in both
+languages, because that is what they are called out loud. The `triangle` *shape* primitive is still in
 `CapGeometry`, unused by any current entry — it costs nothing and keeps adding
 a wedge cap a one-line change.
 
