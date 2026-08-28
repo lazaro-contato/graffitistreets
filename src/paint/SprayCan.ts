@@ -31,38 +31,12 @@ export class SprayCan {
   sizeMultiplier: number = SPRAY.MAX_SIZE;
   flowMultiplier = 1;
 
-  private listeners: ((what: "color" | "cap") => void)[] = [];
-
-  /**
-   * Told whenever what is fitted to the can changes.
-   *
-   * The colour has two views — the palette along the bottom of the screen and
-   * the backpack — and the can is the one thing both of them are looking at.
-   * Without this they drift: change colour with a number key and the bag, which
-   * is closed and cannot see it happen, opens still ringing the old one.
-   *
-   * It says *what* changed rather than merely that something did, because not
-   * every listener wants both: the colour hint retires when somebody changes
-   * colour, and fitting a different cap is not that.
-   */
-  onChange(listener: (what: "color" | "cap") => void) {
-    this.listeners.push(listener);
-  }
-
-  private announce(what: "color" | "cap") {
-    for (const listener of this.listeners) listener(what);
-  }
-
   setColor(hex: string) {
-    if (hex === this.color) return;
     this.color = hex;
-    this.announce("color");
   }
 
   setCap(cap: CapId) {
-    if (cap === this.cap) return;
     this.cap = cap;
-    this.announce("cap");
   }
 
   setSizing(sizing: BrushSizing) {

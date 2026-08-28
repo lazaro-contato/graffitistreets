@@ -18,11 +18,12 @@ import { StrokeStore } from "./state/StrokeStore";
 import { LocalTransport } from "./net/LocalTransport";
 import { buildHud } from "./ui/Hud";
 import { SprayCursor } from "./ui/SprayCursor";
-import { Inventory } from "./ui/Inventory";
+import { Workshop } from "./ui/workshop/Workshop";
+import { Loadout } from "./state/Loadout";
 import { Menu, MENU_ART, type MenuScreen } from "./ui/Menu";
 import { LoadingScreen } from "./ui/Loading";
 import { buildPhoto } from "./ui/Photo";
-import { backpackHint, colourHint } from "./ui/Hint";
+import { workshopHint, canHint } from "./ui/Hint";
 import { GITHUB_ICON } from "./ui/Icons";
 import { wireLink } from "./ui/Links";
 import { Session } from "./telemetry/Session";
@@ -112,15 +113,34 @@ transport.onMessage((message) => {
   }
 });
 
-// Retired the first time somebody changes colour, which is proof they have
-// learned the thing it exists to teach. Fitting a different cap is not that,
-// hence the check on what actually changed.
-const colourTip = colourHint();
-can.onChange((what) => {
-  if (what === "color") colourTip.dismiss();
-});
+/**
+ * The eight cans, and which of them is in hand.
+ *
+ * It is the source of truth for what the player is painting with; the spray
+ * can is downstream of it. Keeping the equipping in one place is what makes
+ * the rack on screen, the workshop and the actual paint agree with each other
+ * without any of them talking to the others.
+ */
+const loadout = new Loadout();
 
-buildHud(can, () => player.controls.isLocked);
+function equip() {
+  const selected = loadout.current;
+  can.setCap(selected.cap);
+  can.setColor(selected.color);
+  can.sizeMultiplier = selected.size;
+  can.flowMultiplier = selected.flow;
+}
+
+loadout.onChange(equip);
+equip();
+
+// Retired the first time somebody reaches for another can, which is proof they
+// have learned the thing it exists to teach.
+const canTip = canHint();
+
+buildHud(loadout, () => player.controls.isLocked, {
+  onCanPicked: () => canTip.dismiss(),
+});
 
 // Times the visit and reports it to Umami as the page goes away — how long the
 // street held someone, and how much paint they left on it.
@@ -141,11 +161,16 @@ const menu = new Menu({
   },
   onBrushSizing: (sizing) => can.setSizing(sizing),
   onResume: () => enterStreet(),
+  onWorkshop: () => openWorkshop("pause"),
   onQuit: () => menu.show("main"),
 });
 
-const inventory = new Inventory(can, () => closeBackpack());
-const hint = backpackHint();
+const workshop = new Workshop(loadout, { onClose: () => closeWorkshop() });
+const hint = workshopHint();
+
+// The workshop generates copy and cap samples, so it has to be told: one pass
+// over data-i18n reaches the static markup but not a canvas.
+onLocaleChange(() => workshop.relocalise());
 
 wireLink("menu-submit", LINKS.SUBMIT[getLocale()]);
 wireLink("menu-bug", LINKS.BUG);
@@ -197,31 +222,43 @@ function enterStreet(onRefusal: MenuScreen | null = null) {
 // three listens for this too, but only to log; the recovery has to be ours.
 document.addEventListener("pointerlockerror", () => {
   requesting = false;
-  if (refuge && !menu.isOpen && !inventory.isOpen) menu.show(refuge);
+  if (refuge && !menu.isOpen && !workshop.isOpen) menu.show(refuge);
   refuge = null;
 });
 
-function openBackpack() {
-  if (inventory.isOpen) return;
+/**
+ * Where the workshop was opened from, and therefore where closing it goes.
+ *
+ * Opened with I from the street, it hands the pointer back on the way out.
+ * Opened from the pause screen, the player was already out of the street and
+ * dropping them back into it would be a door they did not ask to go through.
+ */
+let workshopFrom: "street" | "pause" = "street";
+
+function openWorkshop(from: "street" | "pause") {
+  if (workshop.isOpen) return;
+  workshopFrom = from;
   hint.dismiss();
-  inventory.open();
+  menu.hide();
+  workshop.open();
   hud.hidden = true;
   player.controls.unlock();
 }
 
-function closeBackpack() {
-  if (!inventory.isOpen) return;
+function closeWorkshop() {
+  if (!workshop.isOpen) return;
   // Shut on the spot: pressing I again has to close it whether or not the
   // pointer comes back. The refuge covers the case where it does not.
-  inventory.close();
-  enterStreet("pause");
+  workshop.close();
+  if (workshopFrom === "pause") menu.show("pause");
+  else enterStreet("pause");
 }
 
 player.controls.addEventListener("lock", () => {
   requesting = false;
   refuge = null;
   menu.hide();
-  inventory.close();
+  workshop.close();
   hud.hidden = false;
 });
 
@@ -230,7 +267,7 @@ player.controls.addEventListener("unlock", () => {
   // Losing the lock on its own — Esc, or the tab going to the background —
   // means the player stepped away, so pause. Unless we let go of it ourselves
   // to open the backpack, or a menu screen is already up.
-  if (!inventory.isOpen && !menu.isOpen) menu.show("pause");
+  if (!workshop.isOpen && !menu.isOpen) menu.show("pause");
 });
 
 // Opening a tab drops pointer lock, which is what anyone clicking a link
@@ -250,16 +287,17 @@ window.addEventListener("keydown", (e) => {
   }
 
   if (e.code === "KeyI") {
-    if (inventory.isOpen) closeBackpack();
-    else if (player.controls.isLocked) openBackpack();
+    if (workshop.isOpen) closeWorkshop();
+    else if (player.controls.isLocked) openWorkshop("street");
     return;
   }
 
   if (e.code !== "Escape") return;
 
   // Escape while locked is the browser's to handle: it drops the lock and the
-  // unlock listener above brings up the pause screen.
-  if (inventory.isOpen) closeBackpack();
+  // unlock listener above brings up the pause screen. The workshop handles its
+  // own Escape and calls back into closeWorkshop, so it is not repeated here.
+  if (workshop.isOpen) return;
   else if (menu.current && menu.current !== "main" && menu.current !== "pause")
     menu.back();
   else if (menu.current === "pause") enterStreet();

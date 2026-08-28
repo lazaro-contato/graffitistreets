@@ -38,20 +38,20 @@ export class OneTimeHint {
 }
 
 /**
- * The nudge towards the backpack, retired the first time it opens.
+ * The nudge towards the workshop, retired the first time it opens.
  *
- * The key is the original one: anybody who has already dismissed this must not
- * be shown it again just because the class around it was renamed.
+ * The key is the original one: anybody who already found the bag this replaced
+ * must not be nudged again just because it grew into a workshop.
  */
-export const backpackHint = () =>
+export const workshopHint = () =>
   new OneTimeHint("hint", "graffiti.backpackOpened");
 
 /**
- * The nudge about changing colour, retired the first time somebody does.
+ * The nudge about reaching for another can, retired the first time somebody
+ * does.
  *
  * Proof beats acknowledgement here: a player who has pressed a number or
  * turned the wheel has learned the thing the hint exists to teach, so it goes
  * without ever needing to be dismissed on purpose.
  */
-export const colourHint = () =>
-  new OneTimeHint("colour-tip", "graffiti.colourPicked");
+export const canHint = () => new OneTimeHint("can-tip", "graffiti.canPicked");

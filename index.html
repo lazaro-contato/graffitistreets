@@ -263,6 +263,14 @@
           </button>
           <button
             class="menu-item ghost"
+            data-action="workshop"
+            type="button"
+            data-i18n="shop.title"
+          >
+            Oficina de latas
+          </button>
+          <button
+            class="menu-item ghost"
             data-action="controls"
             type="button"
             data-i18n="menu.controls"
@@ -301,7 +309,9 @@
         <path class="backing" vector-effect="non-scaling-stroke" />
         <path class="edge" vector-effect="non-scaling-stroke" />
       </svg>
-      <div id="palette"></div>
+      <!-- The eight cans, as they are loaded in the workshop. Reading only:
+           pointer lock owns the cursor while this is on screen. -->
+      <div id="can-rack"></div>
 
       <!-- Both live inside the HUD, so they come and go with pointer lock on
            their own, with no code to hide them in menus. -->
@@ -312,28 +322,131 @@
 
       <p id="hint" class="hud-chip">
         <span class="hint-key">I</span>
-        <span data-i18n="hint.backpack">para abrir a mochila</span>
+        <span data-i18n="hint.workshop">abre a oficina de latas</span>
       </p>
 
       <!-- Directly over the palette it is talking about, so it does not have
            to blink to be found the way the backpack nudge does. -->
-      <p id="colour-tip" class="hud-chip">
-        <span class="hint-key">1 – 0</span>
-        <span data-i18n="hint.colour">ou scroll trocam a cor</span>
+      <p id="can-tip" class="hud-chip">
+        <span class="hint-key">1 – 8</span>
+        <span data-i18n="hint.cans">ou scroll trocam de lata</span>
       </p>
     </div>
 
-    <div id="inventory" hidden>
-      <div class="backpack">
-        <div class="flap">
-          <span class="buckle"></span>
-          <h2 data-i18n="bag.title">Mochila</h2>
-          <span class="buckle"></span>
+    <!-- The can workshop. Sectors are filled in by src/ui/workshop/, so this
+         is only the shell: the panels a sector mounts into, and nothing that
+         has to be kept in step with the loadout. -->
+    <div id="workshop" hidden>
+      <div class="wk-rail"></div>
+
+      <header class="wk-top">
+        <p class="wk-mark" data-i18n="shop.title">Oficina de latas</p>
+        <p class="wk-crumb" data-i18n="shop.crumb">
+          Monte as oito latas que você leva pra rua
+        </p>
+        <p class="wk-esc">
+          <kbd>Esc</kbd>
+          <span data-i18n="shop.close">voltar pra rua</span>
+        </p>
+      </header>
+
+      <main class="wk-stage">
+        <section class="wk-panel wk-panel--caps" aria-labelledby="wk-h-caps">
+          <div class="wk-head">
+            <span class="wk-tick"></span>
+            <h2 id="wk-h-caps" data-i18n="shop.caps.title">Caps</h2>
+            <span class="wk-hint" data-i18n="shop.caps.hint">
+              A ponta define o traço
+            </span>
+          </div>
+          <div class="wk-body">
+            <div class="wk-capgrid" id="wk-caps" role="group"></div>
+            <div class="wk-capdetail" id="wk-cap-detail"></div>
+          </div>
+        </section>
+
+        <section class="wk-panel wk-panel--colour" aria-labelledby="wk-h-colour">
+          <div class="wk-head">
+            <span class="wk-tick"></span>
+            <h2 id="wk-h-colour" data-i18n="shop.colour.title">Cor</h2>
+            <span class="wk-hint" id="wk-hex"></span>
+          </div>
+          <div class="wk-body">
+            <div class="wk-swatches" id="wk-swatches" role="group"></div>
+          </div>
+        </section>
+
+        <aside class="wk-panel wk-panel--wall" aria-labelledby="wk-h-wall">
+          <div class="wk-head">
+            <span class="wk-tick"></span>
+            <h2 id="wk-h-wall" data-i18n="shop.wall.title">Muro de teste</h2>
+            <span class="wk-hint" data-i18n="shop.wall.hint">Arraste pra pintar</span>
+          </div>
+          <div class="wk-body">
+            <div class="wk-wall" id="wk-wall-wrap">
+              <canvas id="wk-wall"></canvas>
+            </div>
+            <div class="wk-dials" id="wk-dials"></div>
+            <div class="wk-wallfoot">
+              <p class="wk-combo" id="wk-combo"></p>
+              <button class="wk-btn" id="wk-undo" type="button" data-i18n="shop.undo">
+                Desfazer
+              </button>
+              <button class="wk-btn wk-btn--warn" id="wk-clear" type="button" data-i18n="shop.clear">
+                Limpar
+              </button>
+            </div>
+          </div>
+        </aside>
+      </main>
+
+      <section class="wk-panel wk-panel--cans" aria-labelledby="wk-h-cans">
+        <div class="wk-head">
+          <span class="wk-tick"></span>
+          <h2 id="wk-h-cans" data-i18n="shop.cans.title">Latas</h2>
+          <span class="wk-hint" data-i18n="shop.cans.hint">
+            1 – 8 em jogo. Editar salva sozinho.
+          </span>
+          <div class="wk-presets" id="wk-presets" role="group"></div>
+          <button class="wk-btn wk-btn--warn" id="wk-reset" type="button" data-i18n="shop.reset">
+            Resetar preset
+          </button>
         </div>
+        <div class="wk-body">
+          <div class="wk-cans" id="wk-cans" role="group"></div>
+        </div>
+      </section>
 
-        <div id="pockets"></div>
+      <footer class="wk-keys" id="wk-keys"></footer>
+    </div>
 
-        <p class="hint" data-i18n="bag.close">I ou Esc para fechar</p>
+    <!-- The colour mixer, over the workshop. -->
+    <div class="wk-backdrop" id="wk-picker" hidden>
+      <div class="wk-mixer" role="dialog" aria-modal="true" aria-labelledby="wk-h-mix">
+        <div class="wk-head">
+          <span class="wk-tick"></span>
+          <h2 id="wk-h-mix" data-i18n="shop.mix.title">Misturar cor</h2>
+        </div>
+        <div class="wk-mixer__body">
+          <div class="wk-sv" id="wk-sv">
+            <div class="wk-sv__white"></div>
+            <div class="wk-sv__black"></div>
+            <span class="wk-knob" id="wk-sv-knob"></span>
+          </div>
+          <div class="wk-hue" id="wk-hue"><span class="wk-knob" id="wk-hue-knob"></span></div>
+          <div class="wk-mixer__hex">
+            <span class="wk-mixer__prev" id="wk-mix-prev"></span>
+            <input id="wk-mix-hex" spellcheck="false" maxlength="7" />
+          </div>
+        </div>
+        <div class="wk-mixer__foot">
+          <button class="wk-btn" id="wk-mix-cancel" type="button" data-i18n="shop.cancel">
+            Cancelar
+          </button>
+          <button class="wk-btn wk-btn--go" id="wk-mix-ok" type="button" data-i18n="shop.confirm">
+            Confirmar
+          </button>
+        </div>
       </div>
     </div>
 
