@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import {
-  SURFACES,
-  ROAD_SURFACE,
-  type Side,
-  type SurfaceSpec,
-} from "../config";
+import type {
+  MapDefinition,
+  SurfaceId,
+  SurfaceSpec,
+  WallDefinition,
+} from "../maps/types";
 import type { Locale } from "../i18n/strings";
 
 /**
@@ -79,17 +79,44 @@ async function loadOne(
 }
 
 /**
- * Loads both walls. `onEach` fires per file, settled or not, so a loading bar
- * can count them — six in total, three a side.
+ * How many files a map's walls will fetch.
+ *
+ * Deduplicated the same way the loader below is, so the progress bar counts
+ * what actually goes over the wire rather than three per wall — every map so
+ * far dresses both of its walls from one set.
+ */
+export function countWallFiles(walls: readonly WallDefinition[]): number {
+  return new Set(walls.map((wall) => wall.surface)).size * 3;
+}
+
+/**
+ * Loads the dressing for every wall of a map, keyed by wall id.
+ *
+ * Walls sharing a spec share the load: `left` and `right` are usually the same
+ * concrete, and fetching it twice would double the progress bar for no files.
+ * The cache is keyed on the spec object, so two specs pointing at the same
+ * images on purpose — the same concrete at two tile scales — stay separate,
+ * which is right, since `tileMeters` differs.
+ *
+ * `onEach` fires per file, settled or not, so a loading bar can count them.
  */
 export async function loadWallSurfaces(
+  walls: readonly WallDefinition[],
   onEach: () => void = () => {},
-): Promise<Record<Side, WallSurface>> {
-  const [left, right] = await Promise.all([
-    loadOne(SURFACES.left, onEach),
-    loadOne(SURFACES.right, onEach),
-  ]);
-  return { left, right };
+): Promise<Map<SurfaceId, WallSurface>> {
+  const pending = new Map<SurfaceSpec, Promise<WallSurface>>();
+  for (const wall of walls) {
+    if (!pending.has(wall.surface)) {
+      pending.set(wall.surface, loadOne(wall.surface, onEach));
+    }
+  }
+
+  const loaded = new Map<SurfaceSpec, WallSurface>();
+  await Promise.all(
+    [...pending].map(async ([spec, task]) => loaded.set(spec, await task)),
+  );
+
+  return new Map(walls.map((wall) => [wall.id, loaded.get(wall.surface)!]));
 }
 
 /**
@@ -102,6 +129,7 @@ export type RoadSurface = {
   normal: THREE.Texture | null;
   roughness: THREE.Texture | null;
   tileMeters: number;
+  offsetU: number;
 };
 
 export const BARE_ROAD: RoadSurface = {
@@ -109,9 +137,11 @@ export const BARE_ROAD: RoadSurface = {
   normal: null,
   roughness: null,
   tileMeters: 4,
+  offsetU: 0,
 };
 
 export async function loadRoadSurface(
+  spec: SurfaceSpec,
   onEach: () => void = () => {},
 ): Promise<RoadSurface> {
   const counted = <T,>(pending: Promise<T>) =>
@@ -121,9 +151,9 @@ export async function loadRoadSurface(
     });
 
   const [albedo, normal, roughness] = await Promise.all([
-    counted(loadImage(ROAD_SURFACE.albedo)),
-    counted(loadImage(ROAD_SURFACE.normal)),
-    counted(loadImage(ROAD_SURFACE.roughness)),
+    counted(loadImage(spec.albedo)),
+    counted(loadImage(spec.normal)),
+    counted(loadImage(spec.roughness)),
   ]);
 
   const colour = asDataMap(albedo);
@@ -135,7 +165,8 @@ export async function loadRoadSurface(
     albedo: colour,
     normal: asDataMap(normal),
     roughness: asDataMap(roughness),
-    tileMeters: ROAD_SURFACE.tileMeters,
+    tileMeters: spec.tileMeters,
+    offsetU: spec.offsetU ?? 0,
   };
 }
 
@@ -163,3 +194,29 @@ export async function loadAdTextures(
   const [pt, en] = await Promise.all([one("pt"), one("en")]);
   return { pt, en };
 }
+
+/** Frees a map's road textures. The images stay in the browser's cache. */
+export function disposeRoadSurface(road: RoadSurface) {
+  road.albedo?.dispose();
+  road.normal?.dispose();
+  road.roughness?.dispose();
+}
+
+/**
+ * Frees a map's wall dressing.
+ *
+ * Only the shared normal and roughness maps are GPU objects; the albedo is an
+ * `HTMLImageElement` that was tiled into panel canvases and owns nothing. The
+ * same surface can be listed under several wall ids, so dispose the set rather
+ * than the entries.
+ */
+export function disposeWallSurfaces(surfaces: Map<SurfaceId, WallSurface>) {
+  for (const surface of new Set(surfaces.values())) {
+    surface.normal?.dispose();
+    surface.roughness?.dispose();
+  }
+}
+
+/** Total files a map fetches up front: its walls, plus three for the road. */
+export const countMapFiles = (def: MapDefinition) =>
+  countWallFiles(def.walls) + 3;

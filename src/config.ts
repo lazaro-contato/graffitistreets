@@ -1,72 +1,45 @@
 /**
- * Every tunable number in the game lives here.
- * These values get tweaked constantly — keep them in one place.
+ * Every tunable number that applies everywhere lives here.
+ *
+ * What belongs to one place rather than to the game — how long a street is,
+ * how it is dressed, what the weather does, where its lamps stand — lives in
+ * `src/maps/` instead, one file per map. Both are data; the split is scope.
  */
 
-export const WORLD = {
-  STREET_LENGTH: 12, // meters, along Z — the wall runs the whole length
-  // Narrower than it is long, so it reads as an alley. At 12 it was wider than
-  // long, which reads as a plaza, and the middle was dead space anyway since
-  // the spray only reaches 2 m.
-  STREET_WIDTH: 6, // meters, along X (wall to wall)
-  WALL_HEIGHT: 3,
-  PANEL_WIDTH: 4, // width of each paintable panel; must divide STREET_LENGTH
-
-  // Scenery that closes the box. None of it is paintable: the eye reaches
-  // 3.5 m in free flight and the wall stops at 3, so without something above
-  // and beyond it you fly up and look straight into empty sky.
-  BUILDING_HEIGHT: 9,
-  BUILDING_DEPTH: 4, // how far the mass behind each wall extends outward
-  END_DEPTH: 3, // thickness of the blocks capping each end of the alley
-  COPING_OVERHANG: 0.2, // how far the wall cap juts back over the alley
-  COPING_HEIGHT: 0.18,
-} as const;
-
 /**
- * Night, and only night. Both pieces of key art are night scenes lit by hard
- * sources, and a warm lamp raking across a wall shows paint far better than
- * flat daylight does.
+ * The street lamp rig, shared by every map.
  *
- * Spot intensities are in candela and fall off with the square of distance,
- * which is why the lamp number is large and the fills are not.
- */
-export const NIGHT = {
-  SKY: "#0a0d14",
-  FOG_NEAR: 8,
-  FOG_FAR: 34,
-
-  // Kept low so the lamps' own falloff is what shapes the scene. Neither of
-  // these attenuates with distance, so every unit of them is a flat floor
-  // laid under the lamps, flattening exactly the gradient that makes a light
-  // look like it has a source.
-  FILL_SKY: "#243049",
-  FILL_GROUND: "#0b0b10",
-  FILL_INTENSITY: 0.16,
-
-  MOON_COLOR: "#8fa4d4",
-  MOON_INTENSITY: 0.18,
-} as const;
-
-/**
- * The street lamps: two of them, one per side, at opposite ends.
+ * These are the fixture, not the placement: the same lamp model stands in
+ * every street, and a map only says how many there are and which corners they
+ * are on. Spot intensity is in candela and falls off with the square of
+ * distance, which is why the number is large.
  *
- * Both cast shadows. With only two sources the poles throw a shadow apiece
- * from opposite directions, and crossing shadows are the clearest signal
- * there is that light comes from somewhere.
+ * The cone is aimed across at the middle of the opposite wall — and the peak
+ * still lands at the pole, because inverse-square puts it there. Aiming at the
+ * pole's own end starves the middle; aiming down the street at the far corner
+ * starves the pole, which is what made the light stop looking like it had a
+ * source in the first place.
  */
 export const LAMP = {
   COLOR: "#ffcf94",
-  INTENSITY: 220, // two now instead of four, so each pulls its weight
+  INTENSITY: 220,
   ANGLE: 1.05, // radians, half-angle of the cone
   PENUMBRA: 0.45,
-  RANGE: 18, // the alley diagonal is far short of this; it is only a backstop
+  RANGE: 18, // longer than any street here; it is only a backstop
+  /** A real street lamp is this tall whatever the street. */
   HEIGHT: 4,
-  END_INSET: 1.4, // meters in from each end of the alley
-  // Tucked against the wall on purpose: the player's box reaches |x| = 2.60,
-  // so a pole any further out could be walked into, and the camera would end
-  // up inside it.
+  END_INSET: 1.4, // meters in from each end of the street
+  // Tucked against the wall on purpose. The player's box stops PLAYER.RADIUS
+  // short of the wall face, so anything closer in than that could be walked
+  // into and the camera would end up inside it.
   WALL_GAP: 0.15, // meters out from the wall face
-  ARM_REACH: 1.1, // how far the bracket carries the head over the alley
+  ARM_REACH: 1.1, // how far the bracket carries the head over the street
+  /**
+   * Where the cone points, as a fraction of the wall height. A third of the
+   * way up lights the band people actually paint on, and scales with the map
+   * instead of leaving the top of a tall wall dark.
+   */
+  AIM_HEIGHT: 1 / 3,
 } as const;
 
 /**
@@ -80,93 +53,21 @@ export const MOVEMENT_MODES: readonly { id: MovementMode }[] = [
   { id: "free" },
 ];
 
-/** Which wall of the street a surface belongs to. */
-export type Side = "left" | "right";
-export const SIDES = ["left", "right"] as const;
-
-// 8 / 4 = 2 panels per side, 4 total
-export const PANELS_PER_SIDE = WORLD.STREET_LENGTH / WORLD.PANEL_WIDTH;
-export const WALL_X = WORLD.STREET_WIDTH / 2; // walls sit at x = -6 and x = +6
-export const HALF_LENGTH = WORLD.STREET_LENGTH / 2;
 
 export const TEXTURE = {
   /**
-   * Texture resolution, in pixels per meter of wall — the ONE number that sets
-   * canvas size. Deriving both dimensions from it keeps the resolution
-   * identical on both axes, which is what makes a round dab in canvas space
-   * come out round on the wall. A square canvas on a 6 x 4 m panel gave
-   * 171 px/m across and 256 px/m up, and every spray came out as an ellipse.
+   * The reference wall resolution, in pixels per meter.
    *
-   * At 192: 768 x 576 per panel, so the 4 panels cost about 7 MB of VRAM.
-   * Raise to 256 for sharper walls at 13 MB; this is the only value to touch.
+   * Each map now sets its own — see `MapDefinition.pixelsPerMeter` — because a
+   * corridor and a boulevard want different densities and cost very different
+   * amounts of VRAM. This one is what the grain was tuned against, and it is
+   * only used to keep speckle density steady across maps that differ from it.
    */
   PIXELS_PER_METER: 192,
   BASE_COLOR: "#8d8b86", // concrete
   NOISE_AMOUNT: 0.06,
 } as const;
 
-/**
- * Optional wall photography, one set per side, dropped into `public/wall/`.
- *
- * The albedo is NOT a material map: the panel canvas is the colour texture,
- * because paint is drawn on top of it, so the photo is tiled into that canvas
- * as the base coat. Normal and roughness never get painted, so those go on the
- * material and are shared between the panels of a side.
- *
- * Each side is independent. Any file that is missing falls back to the
- * procedural concrete, so one dressed wall and one bare one is fine.
- */
-export type SurfaceSpec = {
-  albedo: string;
-  normal: string; // OpenGL convention (green up), not DirectX
-  roughness: string;
-  /**
-   * How much wall one tile of those images covers.
-   *
-   * Per side, not global: a concrete panel and a coat of flaking paint are
-   * photographed at different scales, and forcing both to the same tile would
-   * leave one of them obviously the wrong size.
-   */
-  tileMeters: number;
-};
-
-/**
- * Textures live under their own name, and each side points at one.
- *
- * This one is cast panels: two plates across the tile and four up it. At 2.4 m
- * that makes each plate 1.20 x 0.60 m, the standard cladding size — and it
- * divides the wall exactly, five rows up the 3 m and ten along the 12 m, so
- * the joints never land half way through a plate.
- */
-const CONCRETE_031: SurfaceSpec = {
-  albedo: "/wall/concrete031/albedo.jpg",
-  normal: "/wall/concrete031/normal.jpg",
-  roughness: "/wall/concrete031/roughness.jpg",
-  tileMeters: 2.4,
-};
-
-export const SURFACES: Record<Side, SurfaceSpec> = {
-  left: CONCRETE_031,
-  right: CONCRETE_031,
-};
-
-/**
- * The road.
- *
- * One tile spans the full width on purpose. The photograph carries a painted
- * line down its edge, so tiling it at any other scale scatters yellow stripes
- * across the asphalt; at exactly one tile across, with half a tile of offset,
- * that line lands on the centre of the alley and reads as road marking.
- */
-export const ROAD_SURFACE: SurfaceSpec = {
-  albedo: "/road/albedo.jpg",
-  normal: "/road/normal.jpg",
-  roughness: "/road/roughness.jpg",
-  tileMeters: WORLD.STREET_WIDTH,
-};
-
-/** Half a tile, which is what puts the painted line on the centre line. */
-export const ROAD_OFFSET_U = 0.5;
 
 export const SURFACE = {
   /** Damp patches kept over the photo, so panels do not read as clones. */
@@ -293,18 +194,6 @@ export const LINKS = {
   },
 } as const;
 
-/** Canvas size of one panel, in pixels. */
-export const PANEL_TEXTURE_WIDTH =
-  WORLD.PANEL_WIDTH * TEXTURE.PIXELS_PER_METER;
-export const PANEL_TEXTURE_HEIGHT =
-  WORLD.WALL_HEIGHT * TEXTURE.PIXELS_PER_METER;
-
-/**
- * Width of a whole wall strip in texture pixels.
- * This space is never allocated — it is the coordinate system strokes live in.
- */
-export const STRIP_WIDTH_PX = PANEL_TEXTURE_WIDTH * PANELS_PER_SIDE;
-
 export const PLAYER = {
   EYE_HEIGHT: 1.7,
   CROUCH_EYE_HEIGHT: 0.95,
@@ -330,16 +219,16 @@ export const PLAYER = {
   // Free flight. Space climbs, shift sinks, and gravity is off entirely.
   FLY_SPEED: 3, // m/s up or down
   FLY_ACCEL: 10, // how quickly the climb rate settles, in 1/s
-  /** Highest the eye may reach: half a metre of clearance over the wall. */
-  FLY_CEILING: WORLD.WALL_HEIGHT + 0.5,
+  // The flight ceiling is not here: it is half a metre over the wall, and how
+  // high the wall is belongs to the map. See MapMetrics.flyCeiling.
 } as const;
 
 export const SPRAY = {
   MAX_DISTANCE: 2, // meters — beyond this the spray does not reach
   MIN_DISTANCE: 0.4,
   // Footprint radius on the wall, in METERS, not texture pixels. Keeping the
-  // journal in world units makes it independent of TEXTURE.PIXELS_PER_METER —
-  // change the resolution and old strokes still replay at the right size.
+  // journal in world units makes it independent of the wall resolution — and
+  // of which map it was painted in, since every map picks its own.
   //
   // Range drives the cone. Backing off to MAX_DISTANCE opens the spray up to
   // BASE_RADIUS_M but spreads the paint thin; walking in tightens it towards a
@@ -547,7 +436,14 @@ export const capsIn = (category: CapCategory) =>
 
 export const DEFAULT_CAP: CapId = "circle";
 
-/** The base radius expressed in texture pixels, for canvas-space code. */
+/**
+ * The base radius in texture pixels, at the reference resolution.
+ *
+ * Only the grain uses it, as the scale a dab's speckle count is measured
+ * against. It is deliberately not per map: a wall drawn at a higher density
+ * needs proportionally more specks to look equally grainy, and dividing by a
+ * fixed reference is what gives it them.
+ */
 export const BASE_RADIUS_PX =
   SPRAY.BASE_RADIUS_M * TEXTURE.PIXELS_PER_METER;
 

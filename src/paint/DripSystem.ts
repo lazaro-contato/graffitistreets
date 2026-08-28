@@ -1,9 +1,10 @@
-import { DRIP, WORLD, type Side } from "../config";
+import { DRIP } from "../config";
+import type { MapMetrics, SurfaceId } from "../maps/types";
 import type { Transport } from "../net/Transport";
 
 type Drip = {
   strokeId: string;
-  side: Side;
+  surface: SurfaceId;
   color: string;
   u: number;
   v: number;
@@ -31,6 +32,8 @@ export class DripSystem {
   constructor(
     private transport: Transport,
     private authorId: string,
+    /** A run falls in metres, so it needs to know how tall the wall is. */
+    private metrics: MapMetrics,
   ) {}
 
   get count() {
@@ -46,7 +49,7 @@ export class DripSystem {
    * it faster, and holding on loads it for longer.
    */
   spawn(
-    side: Side,
+    surface: SurfaceId,
     u: number,
     v: number,
     color: string,
@@ -56,7 +59,8 @@ export class DripSystem {
     if (this.active.length >= DRIP.MAX_ACTIVE) return;
 
     // Paint pools at the bottom of the sprayed patch, not at its centre.
-    const startV = v - (sprayRadius * DRIP.START_DROP) / WORLD.WALL_HEIGHT;
+    const wallHeight = this.metrics.def.wallHeight;
+    const startV = v - (sprayRadius * DRIP.START_DROP) / wallHeight;
     // Spraying at the foot of the wall has nowhere left to run.
     if (startV <= 0) return;
 
@@ -73,7 +77,7 @@ export class DripSystem {
 
     const drip: Drip = {
       strokeId: crypto.randomUUID(),
-      side,
+      surface,
       color,
       u,
       v: startV,
@@ -99,9 +103,9 @@ export class DripSystem {
 
       drip.travelled += step;
       drip.sinceSegment += step;
-      drip.v -= step / WORLD.WALL_HEIGHT;
+      drip.v -= step / this.metrics.def.wallHeight;
       drip.u +=
-        ((Math.random() * 2 - 1) * DRIP.WANDER * dt) / WORLD.STREET_LENGTH;
+        ((Math.random() * 2 - 1) * DRIP.WANDER * dt) / this.metrics.def.length;
 
       const progress = Math.min(1, drip.travelled / drip.length);
       drip.radius = drip.startRadius * (1 - DRIP.NARROWING * progress);
@@ -129,7 +133,7 @@ export class DripSystem {
     this.transport.send({
       kind: "stroke:append",
       strokeId: drip.strokeId,
-      side: drip.side,
+      surface: drip.surface,
       color: drip.color,
       // A running bead is liquid, so it is round whatever cap sprayed it.
       cap: "circle",

@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { ADS, HALF_LENGTH } from "../config";
+import { ADS } from "../config";
+import type { MapMetrics } from "../maps/types";
 import type { Locale } from "../i18n/strings";
 
 export type AdTextures = Record<Locale, THREE.Texture | null>;
@@ -8,13 +9,8 @@ export type Billboards = {
   /** Handed to Aim, which is the one thing that raycasts. */
   meshes: THREE.Mesh[];
   setLocale(locale: Locale): void;
+  dispose(): void;
 };
-
-const FRAME = new THREE.MeshStandardMaterial({
-  color: "#0e1014",
-  roughness: 0.4,
-  metalness: 0.7,
-});
 
 /**
  * A lit panel on each end block.
@@ -30,23 +26,37 @@ const FRAME = new THREE.MeshStandardMaterial({
  */
 export function buildBillboards(
   scene: THREE.Scene,
+  metrics: MapMetrics,
   textures: AdTextures,
   link: string,
 ): Billboards {
   const faces: THREE.MeshBasicMaterial[] = [];
   const meshes: THREE.Mesh[] = [];
+  const groups: THREE.Group[] = [];
+  const junk: { dispose(): void }[] = [];
+
+  const frameMaterial = new THREE.MeshStandardMaterial({
+    color: "#0e1014",
+    roughness: 0.4,
+    metalness: 0.7,
+  });
+  junk.push(frameMaterial);
 
   for (const end of [-1, 1] as const) {
     const group = new THREE.Group();
-    group.position.set(0, ADS.CENTRE_Y, end * (HALF_LENGTH - ADS.PROUD));
+    groups.push(group);
+    group.position.set(0, ADS.CENTRE_Y, end * (metrics.halfLength - ADS.PROUD));
     // A plane's normal is +Z, which already faces down the alley from the near
     // end; the far one has to be turned to face back.
     group.rotation.y = end < 0 ? 0 : Math.PI;
 
-    const frame = new THREE.Mesh(
-      new THREE.BoxGeometry(ADS.WIDTH + 0.14, ADS.HEIGHT + 0.14, 0.08),
-      FRAME,
+    const frameGeometry = new THREE.BoxGeometry(
+      ADS.WIDTH + 0.14,
+      ADS.HEIGHT + 0.14,
+      0.08,
     );
+    junk.push(frameGeometry);
+    const frame = new THREE.Mesh(frameGeometry, frameMaterial);
     frame.position.z = -0.05;
     frame.castShadow = true;
     group.add(frame);
@@ -56,11 +66,11 @@ export function buildBillboards(
       toneMapped: false,
     });
     faces.push(face);
+    junk.push(face);
 
-    const panel = new THREE.Mesh(
-      new THREE.PlaneGeometry(ADS.WIDTH, ADS.HEIGHT),
-      face,
-    );
+    const panelGeometry = new THREE.PlaneGeometry(ADS.WIDTH, ADS.HEIGHT);
+    junk.push(panelGeometry);
+    const panel = new THREE.Mesh(panelGeometry, face);
     // What Aim looks for. Anything carrying a link is pointed at, not painted.
     panel.userData.link = link;
     group.add(panel);
@@ -86,6 +96,16 @@ export function buildBillboards(
         face.map = texture;
         face.needsUpdate = true;
       }
+    },
+    dispose() {
+      for (const group of groups) {
+        scene.remove(group);
+        group.clear();
+      }
+      for (const item of junk) item.dispose();
+      // The artwork itself is not freed here: it is one texture per language,
+      // loaded once, and the next map hangs the same two signs.
+      meshes.length = 0;
     },
   };
 }

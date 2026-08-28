@@ -1,8 +1,8 @@
 # Wall surfaces
 
-A folder per texture, not per wall, and `SURFACES` in `src/config.ts` points
-each side at one of them. Both sides can share a texture or use different ones,
-and swapping a wall is one line.
+A folder per texture, not per wall. `src/maps/surfaces.ts` names each set once,
+and every map picks the one it wants for each of its walls. Two walls can share
+a set or use different ones, and swapping a wall is one line in a map file.
 
 ```
 public/wall/<name>/albedo.jpg

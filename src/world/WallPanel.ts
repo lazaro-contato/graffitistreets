@@ -1,16 +1,8 @@
 import * as THREE from "three";
-import {
-  WORLD,
-  TEXTURE,
-  SURFACE,
-  PANEL_TEXTURE_WIDTH,
-  PANEL_TEXTURE_HEIGHT,
-  type Side,
-} from "../config";
+import { TEXTURE, SURFACE } from "../config";
+import type { MapMetrics, SurfaceId, WallDefinition } from "../maps/types";
 import { createRandom } from "../core/Random";
 import { BARE_WALL, type WallSurface } from "./Surfaces";
-
-export type { Side };
 
 /**
  * One slice of a wall strip: a mesh, a 2D canvas and a CanvasTexture.
@@ -21,7 +13,8 @@ export type { Side };
  */
 export class WallPanel {
   readonly id: number;
-  readonly side: Side;
+  /** Which wall of the map this is a slice of. Strokes are keyed by it. */
+  readonly surfaceId: SurfaceId;
   readonly index: number;
   readonly mesh: THREE.Mesh;
   readonly canvas: HTMLCanvasElement;
@@ -33,17 +26,20 @@ export class WallPanel {
 
   constructor(
     id: number,
-    side: Side,
+    wall: WallDefinition,
     index: number,
+    private metrics: MapMetrics,
     private surface: WallSurface = BARE_WALL,
   ) {
     this.id = id;
-    this.side = side;
+    this.surfaceId = wall.id;
     this.index = index;
 
+    const { def, panelTextureWidth, panelTextureHeight } = metrics;
+
     this.canvas = document.createElement("canvas");
-    this.canvas.width = PANEL_TEXTURE_WIDTH;
-    this.canvas.height = PANEL_TEXTURE_HEIGHT;
+    this.canvas.width = panelTextureWidth;
+    this.canvas.height = panelTextureHeight;
     this.ctx = this.canvas.getContext("2d", { willReadFrequently: false })!;
     this.paintBase();
 
@@ -53,10 +49,7 @@ export class WallPanel {
     this.texture.colorSpace = THREE.SRGBColorSpace;
     this.texture.anisotropy = 4;
 
-    const geometry = new THREE.PlaneGeometry(
-      WORLD.PANEL_WIDTH,
-      WORLD.WALL_HEIGHT,
-    );
+    const geometry = new THREE.PlaneGeometry(def.panelWidth, def.wallHeight);
     const material = new THREE.MeshStandardMaterial({
       map: this.texture,
       normalMap: this.tileMap(surface.normal),
@@ -69,19 +62,20 @@ export class WallPanel {
     this.mesh.receiveShadow = true;
     this.mesh.userData.panelId = id;
 
-    const x = side === "left" ? -WORLD.STREET_WIDTH / 2 : WORLD.STREET_WIDTH / 2;
+    const left = wall.side === "left";
+    const x = left ? -metrics.wallX : metrics.wallX;
 
     // A plane's local +X — the direction its uv.x grows in — ends up pointing
     // at -Z on the left wall and +Z on the right wall after the y rotation.
     // Laying panels out along that same direction is what makes
     // `index + uv.x` concatenate into one continuous, gap-free strip.
-    const uvDirection = side === "left" ? -1 : 1;
+    const uvDirection = left ? -1 : 1;
     const z =
       uvDirection *
-      (-WORLD.STREET_LENGTH / 2 + WORLD.PANEL_WIDTH * (index + 0.5));
+      (-metrics.halfLength + def.panelWidth * (index + 0.5));
 
-    this.mesh.position.set(x, WORLD.WALL_HEIGHT / 2, z);
-    this.mesh.rotation.y = side === "left" ? Math.PI / 2 : -Math.PI / 2;
+    this.mesh.position.set(x, def.wallHeight / 2, z);
+    this.mesh.rotation.y = left ? Math.PI / 2 : -Math.PI / 2;
   }
 
   /**
@@ -102,12 +96,10 @@ export class WallPanel {
     // assume square here and a 1024x715 photo puts the two out of step.
     const tileHeight = tileWidth * (image.height / image.width);
 
+    const { panelWidth, wallHeight } = this.metrics.def;
     const texture = source.clone();
-    texture.repeat.set(
-      WORLD.PANEL_WIDTH / tileWidth,
-      WORLD.WALL_HEIGHT / tileHeight,
-    );
-    texture.offset.set((this.index * WORLD.PANEL_WIDTH) / tileWidth, 0);
+    texture.repeat.set(panelWidth / tileWidth, wallHeight / tileHeight);
+    texture.offset.set((this.index * panelWidth) / tileWidth, 0);
     texture.needsUpdate = true;
     return texture;
   }
@@ -125,12 +117,13 @@ export class WallPanel {
     const pattern = ctx.createPattern(image, "repeat");
     if (!pattern) return false;
 
-    const scale = (this.surface.tileMeters * TEXTURE.PIXELS_PER_METER) / image.width;
-    const shift = -this.index * PANEL_TEXTURE_WIDTH;
+    const { panelTextureWidth, panelTextureHeight, def } = this.metrics;
+    const scale = (this.surface.tileMeters * def.pixelsPerMeter) / image.width;
+    const shift = -this.index * panelTextureWidth;
 
     pattern.setTransform(new DOMMatrix().translate(shift, 0).scale(scale, scale));
     ctx.fillStyle = pattern;
-    ctx.fillRect(0, 0, PANEL_TEXTURE_WIDTH, PANEL_TEXTURE_HEIGHT);
+    ctx.fillRect(0, 0, panelTextureWidth, panelTextureHeight);
     return true;
   }
 
@@ -144,8 +137,8 @@ export class WallPanel {
    */
   paintBase() {
     const { ctx } = this;
-    const w = PANEL_TEXTURE_WIDTH;
-    const h = PANEL_TEXTURE_HEIGHT;
+    const w = this.metrics.panelTextureWidth;
+    const h = this.metrics.panelTextureHeight;
     const random = createRandom(0x9e3779b9 ^ this.id);
 
     ctx.globalAlpha = 1;
@@ -177,7 +170,7 @@ export class WallPanel {
     for (let i = 0; i < 12; i++) {
       const x = random() * w;
       const y = random() * h;
-      const r = (60 + random() * 180) * (TEXTURE.PIXELS_PER_METER / 256);
+      const r = (60 + random() * 180) * (this.metrics.def.pixelsPerMeter / 256);
       const g = ctx.createRadialGradient(x, y, 0, x, y, r);
       g.addColorStop(0, "#3a3a38");
       g.addColorStop(1, "rgba(58,58,56,0)");

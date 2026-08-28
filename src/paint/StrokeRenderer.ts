@@ -1,11 +1,6 @@
 import { stampDab } from "./Brush";
 import { capExtent } from "./CapGeometry";
-import {
-  TEXTURE,
-  SPRAY,
-  PANEL_TEXTURE_WIDTH,
-  PANEL_TEXTURE_HEIGHT,
-} from "../config";
+import { SPRAY } from "../config";
 import type { Stroke } from "../state/types";
 import { CAP_BY_ID, type CapId } from "../config";
 import type { WallStrip } from "../world/WallStrip";
@@ -15,8 +10,16 @@ export type RenderOptions = {
   restrictTo?: ReadonlySet<number>;
 };
 
-/** Stroke radii are stored in meters; canvases work in pixels. */
-const toPixels = (meters: number) => meters * TEXTURE.PIXELS_PER_METER;
+/**
+ * Stroke radii are stored in meters; canvases work in pixels.
+ *
+ * The conversion belongs to the strip rather than to a module constant,
+ * because every map picks its own wall resolution. That is also what makes the
+ * journal portable: a tag painted at 192 px/m replays at the right physical
+ * size on a wall drawn at 224.
+ */
+const toPixels = (strip: WallStrip, meters: number) =>
+  meters * strip.pixelsPerMeter;
 
 /**
  * Stamps one dab in strip space, spilling into every panel it overlaps.
@@ -46,7 +49,7 @@ function stampAcrossPanels(
     const panel = strip.panels[i];
     stampDab(
       panel.ctx,
-      x - i * PANEL_TEXTURE_WIDTH,
+      x - i * strip.panelWidthPx,
       y,
       radiusPx,
       color,
@@ -75,8 +78,8 @@ export function renderStroke(
     const point = stroke.points[i];
     const x = point.u * strip.widthPx;
     // UV v grows upwards, canvas y grows downwards.
-    const y = (1 - point.v) * PANEL_TEXTURE_HEIGHT;
-    const radiusPx = toPixels(point.r);
+    const y = (1 - point.v) * strip.heightPx;
+    const radiusPx = toPixels(strip, point.r);
 
     if (i === 0) {
       stampAcrossPanels(
@@ -99,8 +102,8 @@ export function renderStroke(
     // is what carries a stroke across a panel boundary unbroken.
     const prev = stroke.points[i - 1];
     const px = prev.u * strip.widthPx;
-    const py = (1 - prev.v) * PANEL_TEXTURE_HEIGHT;
-    const prevRadiusPx = toPixels(prev.r);
+    const py = (1 - prev.v) * strip.heightPx;
+    const prevRadiusPx = toPixels(strip, prev.r);
     const prevTwist = prev.w ?? 0;
     const twist = point.w ?? 0;
 
@@ -137,7 +140,7 @@ export function panelsTouchedBy(strip: WallStrip, stroke: Stroke): Set<number> {
     // Interpolated dabs sit on the segment, so the span of the two endpoints
     // covers every panel they pass through.
     const radiusPx = capExtent(
-      toPixels(Math.max(point.r, prev.r)),
+      toPixels(strip, Math.max(point.r, prev.r)),
       CAP_BY_ID.get(stroke.cap)!,
     );
     const { first, last } = strip.panelRange(

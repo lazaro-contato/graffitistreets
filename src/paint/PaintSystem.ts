@@ -1,10 +1,10 @@
-import { SPRAY, DRIP, WORLD, CAP_BY_ID } from "../config";
+import { SPRAY, DRIP, CAP_BY_ID } from "../config";
 import { SprayCan } from "./SprayCan";
 import type { Aim, AimResult } from "./Aim";
 import type { DripSystem } from "./DripSystem";
 import type { Transport } from "../net/Transport";
 import type { Stroke, StrokePoint } from "../state/types";
-import type { Side } from "../config";
+import type { MapMetrics, SurfaceId } from "../maps/types";
 
 const SAMPLE_INTERVAL = 1 / SPRAY.SAMPLE_HZ;
 
@@ -19,7 +19,7 @@ function wrapAngle(radians: number) {
  */
 export class PaintSystem {
   private activeStroke: Stroke | null = null;
-  private activeSide: Side | null = null;
+  private activeSurface: SurfaceId | null = null;
   private accumulator = 0;
 
   /** Heading of the stroke's first real movement, in canvas angle terms. */
@@ -42,6 +42,8 @@ export class PaintSystem {
     private transport: Transport,
     private drips: DripSystem,
     private authorId: string,
+    /** Dwell and twist are measured in metres on the wall, so this is needed. */
+    private metrics: MapMetrics,
   ) {}
 
   /** Current cap twist, so the cursor can show the same angle it will paint. */
@@ -78,11 +80,11 @@ export class PaintSystem {
     // Standing too close only pauses it, so backing off resumes the same line.
     if (!target.paintable || !target.panel) return;
 
-    // Only crossing to the *other wall* breaks the stroke. Crossing a panel
+    // Only crossing to *another wall* breaks the stroke. Crossing a panel
     // boundary must not: panels are a rendering detail, and closing the stroke
     // there would restart the interpolation and leave a visible gap on the seam.
-    const side = target.panel.side;
-    if (this.activeSide !== null && this.activeSide !== side) {
+    const surface = target.panel.surfaceId;
+    if (this.activeSurface !== null && this.activeSurface !== surface) {
       this.endStroke();
     }
 
@@ -97,14 +99,15 @@ export class PaintSystem {
     if (!this.activeStroke) {
       this.activeStroke = {
         id: crypto.randomUUID(),
-        side,
+        mapId: this.metrics.def.id,
+        surface,
         color: this.can.color,
         cap: this.can.cap,
         points: [point],
         authorId: this.authorId,
         t: Date.now(),
       };
-      this.activeSide = side;
+      this.activeSurface = surface;
     } else {
       this.activeStroke.points.push(point);
     }
@@ -116,7 +119,7 @@ export class PaintSystem {
     this.transport.send({
       kind: "stroke:append",
       strokeId: this.activeStroke.id,
-      side: this.activeStroke.side,
+      surface: this.activeStroke.surface,
       color: this.activeStroke.color,
       cap: this.activeStroke.cap,
       point,
@@ -143,8 +146,8 @@ export class PaintSystem {
     if (!prev) return 0;
 
     // Canvas angle terms: v grows up the wall, y grows down the canvas.
-    const dx = (u - prev.u) * WORLD.STREET_LENGTH;
-    const dy = -(v - prev.v) * WORLD.WALL_HEIGHT;
+    const dx = (u - prev.u) * this.metrics.def.length;
+    const dy = -(v - prev.v) * this.metrics.def.wallHeight;
     const step = Math.hypot(dx, dy);
     if (step < SPRAY.TWIST_MIN_STEP_M) return this.twist;
 
@@ -165,10 +168,12 @@ export class PaintSystem {
   /**
    * Watches for the spray sitting still on one spot.
    *
-   * Distance is measured on the wall in meters, not in UV: u spans 60 m and v
-   * spans 4 m, so a UV radius would be a flat ellipse. The tolerance scales
-   * with the cone, since holding a wide spray steady within a few centimetres
-   * is still the same spot as far as the wall is concerned.
+   * Distance is measured on the wall in meters, not in UV: u spans the whole
+   * length of the wall and v only its height, so a UV radius would be a flat
+   * ellipse — and a differently proportioned map would flatten it differently.
+   * The tolerance scales with the cone, since holding a wide spray steady
+   * within a few centimetres is still the same spot as far as the wall is
+   * concerned.
    */
   private trackDwell(target: AimResult, dt: number) {
     if (!target.paintable || !target.panel) {
@@ -182,8 +187,8 @@ export class PaintSystem {
       sprayRadius * DRIP.HOLD_RADIUS,
     );
 
-    const dx = (target.u - this.dwellU) * WORLD.STREET_LENGTH;
-    const dy = (target.v - this.dwellV) * WORLD.WALL_HEIGHT;
+    const dx = (target.u - this.dwellU) * this.metrics.def.length;
+    const dy = (target.v - this.dwellV) * this.metrics.def.wallHeight;
 
     if (!this.dwellAnchored || Math.hypot(dx, dy) > tolerance) {
       this.dwellU = target.u;
@@ -204,7 +209,7 @@ export class PaintSystem {
     this.dwellTime = 0;
     this.dwellHasRun = true;
     this.drips.spawn(
-      target.panel.side,
+      target.panel.surfaceId,
       target.u,
       target.v,
       this.can.color,
@@ -228,7 +233,7 @@ export class PaintSystem {
       });
     }
     this.activeStroke = null;
-    this.activeSide = null;
+    this.activeSurface = null;
     this.twistAnchored = false;
     this.twist = 0;
   }

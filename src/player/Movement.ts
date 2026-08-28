@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { PLAYER, type MovementMode } from "../config";
+import type { MapMetrics } from "../maps/types";
 import { clampToCorridor } from "../world/Colliders";
 
 // Scratch vectors, reused every frame to avoid per-frame allocation.
@@ -38,6 +39,23 @@ export class Movement {
   private airTargetSpeed = 0;
 
   private eyeHeight: number = PLAYER.EYE_HEIGHT;
+
+  constructor(private metrics: MapMetrics) {}
+
+  /**
+   * Moves to another street.
+   *
+   * Momentum is dropped along with it: carrying a sprint into a map that is
+   * half the width would slam the player into a wall on the first frame, from
+   * a standing start they never took.
+   */
+  setMap(metrics: MapMetrics) {
+    this.metrics = metrics;
+    this.velocity.set(0, 0, 0);
+    this.verticalVelocity = 0;
+    this.feetY = 0;
+    this.grounded = true;
+  }
 
   setMode(mode: MovementMode) {
     this.mode = mode;
@@ -95,7 +113,7 @@ export class Movement {
     this.velocity.lerp(target, 1 - Math.exp(-rate * dt));
     camera.position.addScaledVector(this.velocity, dt);
 
-    const { hitX, hitZ } = clampToCorridor(camera.position);
+    const { hitX, hitZ } = clampToCorridor(camera.position, this.metrics);
     if (hitX) this.velocity.x = 0;
     if (hitZ) this.velocity.z = 0;
 
@@ -125,7 +143,7 @@ export class Movement {
 
     // The ceiling is on the eye, not the feet, so crouching in mid air does
     // not buy extra altitude.
-    const highest = Math.max(0, PLAYER.FLY_CEILING - this.eyeHeight);
+    const highest = Math.max(0, this.metrics.flyCeiling - this.eyeHeight);
     if (this.feetY <= 0) {
       this.feetY = 0;
       this.verticalVelocity = Math.max(0, this.verticalVelocity);

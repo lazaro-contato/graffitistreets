@@ -1,23 +1,13 @@
 import { Engine } from "./core/Engine";
 import { Loop } from "./core/Loop";
 import { Input } from "./core/Input";
-import { buildStreet } from "./world/Street";
-import { WallSystem } from "./world/WallSystem";
-import {
-  loadWallSurfaces,
-  loadRoadSurface,
-  loadAdTextures,
-} from "./world/Surfaces";
-import { buildBillboards } from "./world/Billboard";
+import { loadArena, fileCount, type Arena, type ArenaDeps } from "./Arena";
+import { loadAdTextures } from "./world/Surfaces";
+import { mapById } from "./maps";
 import { Player } from "./player/Player";
 import { SprayCan } from "./paint/SprayCan";
-import { Aim } from "./paint/Aim";
-import { PaintSystem } from "./paint/PaintSystem";
-import { DripSystem } from "./paint/DripSystem";
-import { StrokeStore } from "./state/StrokeStore";
 import { LocalTransport } from "./net/LocalTransport";
 import { buildHud } from "./ui/Hud";
-import { SprayCursor } from "./ui/SprayCursor";
 import { Inventory } from "./ui/Inventory";
 import { Menu, MENU_ART, type MenuScreen } from "./ui/Menu";
 import { LoadingScreen } from "./ui/Loading";
@@ -35,74 +25,82 @@ import { ADS, LINKS } from "./config";
 
 const canvas = document.getElementById("app") as HTMLCanvasElement;
 const hud = document.getElementById("hud")!;
-// Counted rather than estimated, so the bar tells the truth — including when
-// the ad panels are switched off and there are two fewer files to wait for.
-const loading = new LoadingScreen(
-  6 + // wall textures, three a side
-    3 + // road textures
-    (ADS.ENABLED ? 2 : 0) + // ad artwork, one per language
-    1 + // building the world
-    2 + // menu artwork and the shark
-    1, // the display face
-);
 
 const engine = new Engine(canvas);
 const loop = new Loop();
 const input = new Input(canvas);
-
-buildStreet(engine.scene, await loadRoadSurface(() => loading.advance()));
-
-// Awaited before the walls exist, because the photograph is tiled into each
-// panel canvas as its base coat — there is no adding it afterwards without
-// repainting every panel. The loading screen is already up, in the markup.
-const surfaces = await loadWallSurfaces(() => loading.advance());
-await loading.breathe();
-
-// Building the panels blocks the main thread, so let the bar paint first.
-const walls = new WallSystem(surfaces);
-engine.scene.add(walls.group);
-loading.advance();
-await loading.breathe();
-
-const player = new Player(engine.camera, input, canvas);
 const can = new SprayCan();
-const store = new StrokeStore(walls);
 const transport = new LocalTransport();
 // Model identity from day one, even with a single player. Retrofitting
 // authorId into single player code means an optional field in thirty places.
 const authorId = crypto.randomUUID();
 
-// Off by default — see ADS.ENABLED. With it off nothing is built, the two
-// artwork files are never fetched, and Aim has nothing clickable to test.
-const billboards = ADS.ENABLED
-  ? buildBillboards(
-      engine.scene,
-      await loadAdTextures(() => loading.advance()),
-      ADS.HOUSE_LINK,
-    )
-  : null;
+// Times the visit and reports it to Umami as the page goes away — how long the
+// street held someone, and how much paint they left on it.
+const session = new Session();
 
-if (billboards) {
-  billboards.setLocale(getLocale());
-  onLocaleChange(() => billboards.setLocale(getLocale()));
-}
+/**
+ * The street to build. Read before anything is fetched, because the loading
+ * bar has to be sized up front and different maps fetch different numbers of
+ * files.
+ */
+const startMap = mapById(null);
 
-const aim = new Aim(engine.camera, walls, billboards?.meshes ?? []);
-const drips = new DripSystem(transport, authorId);
-const paint = new PaintSystem(aim, can, transport, drips, authorId);
-const cursor = new SprayCursor(engine.camera, can, aim, paint);
+/** Everything a load waits on besides the map's own files. */
+const CHROME_STEPS =
+  1 + // building the world: panel canvases, and their base coats
+  2 + // the menu artwork and the shark
+  1; // the display face
 
-// The message loop: everything that paints goes through here.
+// Counted rather than estimated, so the bar tells the truth — including when
+// the ad panels are switched off and there are two fewer files to wait for.
+const loading = new LoadingScreen(
+  fileCount(startMap) + CHROME_STEPS + (ADS.ENABLED ? 2 : 0),
+);
+
+// One image per language, loaded once and hung in every map, so it sits out
+// here rather than inside an arena. Off by default — see ADS.ENABLED.
+const ads = ADS.ENABLED ? await loadAdTextures(() => loading.advance()) : null;
+
+const arenaDeps: ArenaDeps = {
+  engine,
+  can,
+  transport,
+  authorId,
+  ads,
+  onFile: () => loading.advance(),
+  breathe: () => loading.breathe(),
+};
+
+/**
+ * The loaded street.
+ *
+ * Everything above it outlives a map; everything it owns does not — see
+ * Arena.ts for where that line is drawn and why. Nothing swaps it yet, but the
+ * seam is what a second street will be plugged into.
+ */
+const arena: Arena = await loadArena(startMap, arenaDeps);
+loading.advance();
+await loading.breathe();
+
+const player = new Player(engine.camera, input, canvas, arena.metrics);
+
+arena.setLocale(getLocale());
+onLocaleChange(() => arena.setLocale(getLocale()));
+
+// The message loop: everything that paints goes through here. It is registered
+// once and reads whichever arena is loaded, because the transport outlives any
+// one street — and LocalTransport has no way to take a handler back off.
 transport.onMessage((message) => {
   switch (message.kind) {
     case "stroke:append":
-      store.appendPoint(message);
+      arena.store.appendPoint(message);
       break;
     case "stroke:undo":
-      store.undo(message.authorId);
+      arena.store.undo(message.authorId);
       break;
-    case "strip:clear":
-      store.clearSide(message.side);
+    case "surface:clear":
+      arena.store.clearSurface(message.surface);
       break;
     case "stroke:end":
       // One per finished spray or paint run, so it is the honest count of
@@ -114,17 +112,14 @@ transport.onMessage((message) => {
 
 buildHud(can, () => player.controls.isLocked);
 
-// Times the visit and reports it to Umami as the page goes away — how long the
-// street held someone, and how much paint they left on it.
-const session = new Session();
-
 // P takes a photo. The same PNG is what the gallery will submit later.
 buildPhoto(engine, () => player.controls.isLocked);
 
 // Everything below is one state machine with four states: playing, the menu
-// (main / pause / controls), and the backpack. Only "playing" holds pointer
-// lock, and every other state needs a real mouse cursor, so the two must never
-// drift apart — every transition goes through enterStreet or a menu.show.
+// (main / modes / settings / controls / pause), and the backpack. Only
+// "playing" holds pointer lock, and every other state needs a real mouse
+// cursor, so the two must never drift apart — every transition goes through
+// enterStreet or a menu.show.
 
 const menu = new Menu({
   onPlay: () => {
@@ -143,14 +138,6 @@ wireLink("menu-submit", LINKS.SUBMIT[getLocale()]);
 wireLink("menu-bug", LINKS.BUG);
 wireLink("menu-source", LINKS.SOURCE, GITHUB_ICON);
 
-/**
- * Asks for the pointer back.
- *
- * Browsers refuse a lock request that arrives too soon after an Esc exit, and
- * there is no way to ask whether this one will be honoured. If it was not,
- * fall back to `refuge` rather than stranding the player with no cursor, no
- * HUD and no way back in.
- */
 /** Between asking for the pointer and finding out whether we got it. */
 let requesting = false;
 /** Where to land if the request is turned down. Usually nowhere. */
@@ -228,7 +215,7 @@ player.controls.addEventListener("unlock", () => {
 // Opening a tab drops pointer lock, which is what anyone clicking a link
 // expects. noopener keeps the new tab from reaching back into this one.
 canvas.addEventListener("click", () => {
-  const link = aim.current.link;
+  const link = arena.currentLink();
   if (link && player.controls.isLocked) {
     window.open(link, "_blank", "noopener,noreferrer");
   }
@@ -261,8 +248,8 @@ window.addEventListener("keydown", (e) => {
  * Holds the loader up until the front door can be painted properly.
  *
  * Only the menu artwork and the display face are worth waiting on — the world
- * itself is already built by the time this runs, synchronously, above. The
- * race is a safety net: a slow font CDN must delay the game, never block it.
+ * itself is already built by the time this runs. The race is a safety net: a
+ * slow font CDN must delay the game, never block it.
  */
 async function waitForFrontDoor() {
   const art = new Image();
@@ -291,23 +278,14 @@ applyLocale();
 menu.show("main");
 await loading.finish();
 
-// Order matters: move, aim, paint, then flush, then render. Aim runs before
-// paint so both the spray and the cursor act on the same frame's raycast, and
-// flushing after all paint logic keeps it to one texture upload per panel.
+// Order matters: move, then the arena (aim, paint, drips, cursor, flush), then
+// the render. Aim runs before paint so both the spray and the cursor act on
+// the same frame's raycast, and the flush comes after all paint logic so it
+// stays at one texture upload per panel per frame.
 loop.add((dt) => {
   session.update(player.controls.isLocked);
   player.update(dt);
-  aim.update();
-  // Pointing at a sign is not painting, so the trigger does nothing to the
-  // wall behind it.
-  paint.update(
-    input.isPainting && player.controls.isLocked && !aim.current.link,
-    dt,
-  );
-  // After paint, so a run spawned this frame lays its first point immediately.
-  drips.update(dt);
-  cursor.update();
-  walls.flush();
+  arena.update(dt, input.isPainting && player.controls.isLocked);
   engine.render();
 });
 

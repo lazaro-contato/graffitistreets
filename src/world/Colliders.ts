@@ -1,17 +1,21 @@
 import type * as THREE from "three";
-import { WALL_X, HALF_LENGTH, PLAYER } from "../config";
+import { PLAYER } from "../config";
+import type { MapMetrics } from "../maps/types";
 
 /**
- * The world is a rectangular corridor, so collision is a clamp.
+ * Every map so far is a rectangular corridor, so collision is a clamp.
  * Returns which axes were hit, so the caller can zero those velocity
  * components — otherwise the player sticks and slides along the wall.
+ *
+ * The bounds come from the map rather than from a module constant, which is
+ * the whole difference between one street and several.
  */
-export function clampToCorridor(position: THREE.Vector3): {
-  hitX: boolean;
-  hitZ: boolean;
-} {
-  const limitX = WALL_X - PLAYER.RADIUS;
-  const limitZ = HALF_LENGTH - PLAYER.RADIUS;
+export function clampToCorridor(
+  position: THREE.Vector3,
+  metrics: MapMetrics,
+): { hitX: boolean; hitZ: boolean } {
+  const limitX = metrics.wallX - PLAYER.RADIUS;
+  const limitZ = metrics.halfLength - PLAYER.RADIUS;
   let hitX = false;
   let hitZ = false;
 

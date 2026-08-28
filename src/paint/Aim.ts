@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { SPRAY, ADS, PANELS_PER_SIDE } from "../config";
+import { SPRAY, ADS } from "../config";
 import type { WallSystem } from "../world/WallSystem";
 import type { WallPanel } from "../world/WallPanel";
 
@@ -97,7 +97,9 @@ export class Aim {
     result.panel = panel;
     // Panels are laid out along their own uv.x direction, so index and uv.x
     // concatenate straight into a continuous 0..1 coordinate along the wall.
-    result.u = (panel.index + hit.uv.x) / PANELS_PER_SIDE;
+    // Every wall of a map is cut into the same number of panels, so the count
+    // is the map's rather than this strip's.
+    result.u = (panel.index + hit.uv.x) / this.walls.metrics.panelsPerWall;
     result.v = hit.uv.y;
     result.paintable = true;
   }
