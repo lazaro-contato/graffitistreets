@@ -2,12 +2,12 @@ import * as THREE from "three";
 import {
   WORLD,
   TEXTURE,
-  SURFACE,
+  NEON,
   PANEL_TEXTURE_WIDTH,
   PANEL_TEXTURE_HEIGHT,
   type Side,
 } from "../config";
-import { createRandom } from "../core/Random";
+import { paintConcrete } from "./Concrete";
 import { BARE_WALL, type WallSurface } from "./Surfaces";
 
 export type { Side };
@@ -28,7 +28,29 @@ export class WallPanel {
   readonly ctx: CanvasRenderingContext2D;
   readonly texture: THREE.CanvasTexture;
 
-  /** Set whenever the canvas changes; WallSystem flushes once per frame. */
+  /**
+   * The glow map: everything neon that has been sprayed on this panel, and
+   * nothing else. It is the material's emissiveMap, so paint written here
+   * lights itself instead of waiting for a lamp to fall on it.
+   *
+   * Half the resolution of the colour map — see NEON.MAP_SCALE.
+   */
+  readonly glowCanvas: HTMLCanvasElement;
+  readonly glowCtx: CanvasRenderingContext2D;
+  readonly glowTexture: THREE.CanvasTexture;
+  readonly glowScale = NEON.MAP_SCALE;
+
+  /**
+   * Whether any neon has ever landed on this panel since its last base coat.
+   *
+   * It exists to keep the glow map off the hot path. Ordinary paint has to
+   * *erase* glow — spraying over a neon tag has to put it out — but on a panel
+   * that has never seen neon there is nothing to erase, and this skips a
+   * second stamp for every dab of every stroke in the common case.
+   */
+  hasGlow = false;
+
+  /** Set whenever either canvas changes; WallSystem flushes once per frame. */
   dirty = false;
 
   constructor(
@@ -45,6 +67,12 @@ export class WallPanel {
     this.canvas.width = PANEL_TEXTURE_WIDTH;
     this.canvas.height = PANEL_TEXTURE_HEIGHT;
     this.ctx = this.canvas.getContext("2d", { willReadFrequently: false })!;
+
+    this.glowCanvas = document.createElement("canvas");
+    this.glowCanvas.width = Math.round(PANEL_TEXTURE_WIDTH * NEON.MAP_SCALE);
+    this.glowCanvas.height = Math.round(PANEL_TEXTURE_HEIGHT * NEON.MAP_SCALE);
+    this.glowCtx = this.glowCanvas.getContext("2d")!;
+
     this.paintBase();
 
     this.texture = new THREE.CanvasTexture(this.canvas);
@@ -52,6 +80,10 @@ export class WallPanel {
     // ends up washed out or too dark.
     this.texture.colorSpace = THREE.SRGBColorSpace;
     this.texture.anisotropy = 4;
+
+    // The glow map carries colour, not data, so it is tagged the same way.
+    this.glowTexture = new THREE.CanvasTexture(this.glowCanvas);
+    this.glowTexture.colorSpace = THREE.SRGBColorSpace;
 
     const geometry = new THREE.PlaneGeometry(
       WORLD.PANEL_WIDTH,
@@ -63,6 +95,12 @@ export class WallPanel {
       roughnessMap: this.tileMap(surface.roughness),
       roughness: 0.95,
       metalness: 0.0,
+      // White, so the emission is whatever colour the glow map holds rather
+      // than a tint over it. Bare concrete leaves that map empty, which is
+      // black, which emits nothing.
+      emissive: new THREE.Color(0xffffff),
+      emissiveMap: this.glowTexture,
+      emissiveIntensity: NEON.INTENSITY,
     });
 
     this.mesh = new THREE.Mesh(geometry, material);
@@ -143,48 +181,30 @@ export class WallPanel {
    * repaints the panel.
    */
   paintBase() {
-    const { ctx } = this;
-    const w = PANEL_TEXTURE_WIDTH;
-    const h = PANEL_TEXTURE_HEIGHT;
-    const random = createRandom(0x9e3779b9 ^ this.id);
-
-    ctx.globalAlpha = 1;
+    // Black, not cleared. An emissiveMap is read as RGB and its alpha is
+    // ignored, so "no light here" has to be an opaque black pixel — a
+    // transparent one still carries whatever colour was last written into it,
+    // and the wall would glow through paint that had covered it.
+    //
+    // Wiping it with the paint is what makes undo and journal replay work on
+    // neon: the wall goes back to bare, and the strokes that survived put
+    // their own light back as they are drawn again.
+    this.glowCtx.globalCompositeOperation = "source-over";
+    this.glowCtx.fillStyle = "#000000";
+    this.glowCtx.fillRect(0, 0, this.glowCanvas.width, this.glowCanvas.height);
+    this.hasGlow = false;
 
     const photographed = this.surface.albedo
       ? this.tilePhoto(this.surface.albedo)
       : false;
 
-    if (!photographed) {
-      ctx.fillStyle = TEXTURE.BASE_COLOR;
-      ctx.fillRect(0, 0, w, h);
-
-      // Concrete grain. Skipped over a photograph, which already has its own —
-      // and this per-pixel pass is the slowest thing in start-up.
-      const img = ctx.getImageData(0, 0, w, h);
-      const data = img.data;
-      for (let i = 0; i < data.length; i += 4) {
-        const n = (random() - 0.5) * 255 * TEXTURE.NOISE_AMOUNT;
-        data[i] += n;
-        data[i + 1] += n;
-        data[i + 2] += n;
-      }
-      ctx.putImageData(img, 0, 0);
-    }
-
-    // Damp patches, so the surface does not read as flat — and so two panels
-    // sharing one tiled photograph do not read as clones of each other.
-    ctx.globalAlpha = photographed ? SURFACE.GRUNGE_ALPHA : 0.05;
-    for (let i = 0; i < 12; i++) {
-      const x = random() * w;
-      const y = random() * h;
-      const r = (60 + random() * 180) * (TEXTURE.PIXELS_PER_METER / 256);
-      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, "#3a3a38");
-      g.addColorStop(1, "rgba(58,58,56,0)");
-      ctx.fillStyle = g;
-      ctx.fillRect(x - r, y - r, r * 2, r * 2);
-    }
-    ctx.globalAlpha = 1;
+    paintConcrete(this.ctx, {
+      width: PANEL_TEXTURE_WIDTH,
+      height: PANEL_TEXTURE_HEIGHT,
+      seed: this.id,
+      // A photograph brings its own grain, so only the damp patches go over it.
+      grain: !photographed,
+    });
 
     this.dirty = true;
   }
@@ -196,6 +216,7 @@ export class WallPanel {
   /** The JS garbage collector does not free GPU resources — call this by hand. */
   dispose() {
     this.texture.dispose();
+    this.glowTexture.dispose();
     const material = this.mesh.material as THREE.MeshStandardMaterial;
     material.normalMap?.dispose();
     material.roughnessMap?.dispose();

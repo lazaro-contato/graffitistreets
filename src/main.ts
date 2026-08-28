@@ -18,11 +18,12 @@ import { StrokeStore } from "./state/StrokeStore";
 import { LocalTransport } from "./net/LocalTransport";
 import { buildHud } from "./ui/Hud";
 import { SprayCursor } from "./ui/SprayCursor";
-import { Inventory } from "./ui/Inventory";
+import { Workshop } from "./ui/workshop/Workshop";
+import { Loadout } from "./state/Loadout";
 import { Menu, MENU_ART, type MenuScreen } from "./ui/Menu";
 import { LoadingScreen } from "./ui/Loading";
 import { buildPhoto } from "./ui/Photo";
-import { BackpackHint } from "./ui/Hint";
+import { workshopHint, canHint } from "./ui/Hint";
 import { GITHUB_ICON } from "./ui/Icons";
 import { wireLink } from "./ui/Links";
 import { Session } from "./telemetry/Session";
@@ -112,7 +113,34 @@ transport.onMessage((message) => {
   }
 });
 
-buildHud(can, () => player.controls.isLocked);
+/**
+ * The eight cans, and which of them is in hand.
+ *
+ * It is the source of truth for what the player is painting with; the spray
+ * can is downstream of it. Keeping the equipping in one place is what makes
+ * the rack on screen, the workshop and the actual paint agree with each other
+ * without any of them talking to the others.
+ */
+const loadout = new Loadout();
+
+function equip() {
+  const selected = loadout.current;
+  can.setCap(selected.cap);
+  can.setColor(selected.color);
+  can.sizeMultiplier = selected.size;
+  can.flowMultiplier = selected.flow;
+}
+
+loadout.onChange(equip);
+equip();
+
+// Retired the first time somebody reaches for another can, which is proof they
+// have learned the thing it exists to teach.
+const canTip = canHint();
+
+buildHud(loadout, () => player.controls.isLocked, {
+  onCanPicked: () => canTip.dismiss(),
+});
 
 // Times the visit and reports it to Umami as the page goes away — how long the
 // street held someone, and how much paint they left on it.
@@ -133,11 +161,32 @@ const menu = new Menu({
   },
   onBrushSizing: (sizing) => can.setSizing(sizing),
   onResume: () => enterStreet(),
-  onQuit: () => menu.show("main"),
+  onWorkshop: () => {
+    // Reachable while the workshop is already open, since the pause screen can
+    // be raised over it. There it means "put me back", not "open it again".
+    if (workshop.isOpen) menu.hide();
+    else openWorkshop();
+  },
+  onQuit: () => {
+    // The pause screen can be raised over the workshop, and the main menu must
+    // not be left floating on top of it.
+    workshop.close();
+    menu.show("main");
+  },
 });
 
-const inventory = new Inventory(can, () => closeBackpack());
-const hint = new BackpackHint();
+const workshop = new Workshop(loadout, {
+  onClose: () => closeWorkshop(),
+  // Escape over the workshop pauses without shutting it, and pressing it again
+  // puts the workshop back. Anything else would make Escape a dead key here,
+  // since it cannot close and cannot resume.
+  onPause: () => (menu.isOpen ? menu.hide() : menu.show("pause")),
+});
+const hint = workshopHint();
+
+// The workshop generates copy and cap samples, so it has to be told: one pass
+// over data-i18n reaches the static markup but not a canvas.
+onLocaleChange(() => workshop.relocalise());
 
 wireLink("menu-submit", LINKS.SUBMIT[getLocale()]);
 wireLink("menu-bug", LINKS.BUG);
@@ -189,40 +238,120 @@ function enterStreet(onRefusal: MenuScreen | null = null) {
 // three listens for this too, but only to log; the recovery has to be ours.
 document.addEventListener("pointerlockerror", () => {
   requesting = false;
-  if (refuge && !menu.isOpen && !inventory.isOpen) menu.show(refuge);
+  if (refuge && !menu.isOpen && !workshop.isOpen) menu.show(refuge);
   refuge = null;
 });
 
-function openBackpack() {
-  if (inventory.isOpen) return;
-  hint.dismiss();
-  inventory.open();
-  hud.hidden = true;
+/**
+ * True between us handing the pointer back on purpose and the browser
+ * confirming it is gone.
+ *
+ * The unlock listener needs it to tell "the player walked away" from "we asked
+ * for this". It used to infer that from whether the workshop was open, which
+ * is only true while the exit arrives promptly — and `pointerlockchange` is
+ * asynchronous, so a fast Escape could close the workshop first and leave the
+ * exit looking like the player leaving.
+ */
+let releasing = false;
+
+/** Hands the pointer back without that being read as stepping away. */
+function releasePointer() {
+  if (!player.controls.isLocked) return;
+  releasing = true;
   player.controls.unlock();
+  // The event is not guaranteed to arrive — an unfocused document can swallow
+  // it — so the flag is cleared on a timer regardless, like `requesting`.
+  window.setTimeout(() => {
+    releasing = false;
+  }, 1000);
 }
 
-function closeBackpack() {
-  if (!inventory.isOpen) return;
-  // Shut on the spot: pressing I again has to close it whether or not the
-  // pointer comes back. The refuge covers the case where it does not.
-  inventory.close();
-  enterStreet("pause");
+function openWorkshop() {
+  if (workshop.isOpen) return;
+  hint.dismiss();
+  menu.hide();
+  workshop.open();
+  hud.hidden = true;
+  releasePointer();
 }
+
+/**
+ * Shuts the workshop and puts the player back in the street.
+ *
+ * Always the street, whichever door they came in by: the workshop is only
+ * reachable from inside a game, so there is nowhere else closing it could
+ * sensibly mean.
+ *
+ * It is only ever reached from the X or from I, and that is the point. Both
+ * are gestures a browser will grant a pointer lock for, so the street comes
+ * back playable with nothing left to click. Escape pauses instead — see the
+ * workshop's onPause.
+ */
+function closeWorkshop() {
+  if (!workshop.isOpen) return;
+  workshop.close();
+  hud.hidden = false;
+  enterStreet();
+}
+
+/**
+ * A lock this short was never really granted.
+ *
+ * Chrome will hand the pointer over and take it straight back when the request
+ * came from the same keypress that also means "let go" — Escape. Nobody locks
+ * the pointer and walks away inside a quarter of a second, so an exit that
+ * fast is a refusal rather than a departure, and pausing on it is what put a
+ * menu over the street.
+ */
+const REVOKE_MS = 250;
+
+/** When the pointer was last actually ours. */
+let lockedAt = -Infinity;
 
 player.controls.addEventListener("lock", () => {
   requesting = false;
   refuge = null;
+  lockedAt = performance.now();
   menu.hide();
-  inventory.close();
+  workshop.close();
   hud.hidden = false;
 });
 
 player.controls.addEventListener("unlock", () => {
+  // An exit we asked for is not the player stepping away, and it must not
+  // pause the game — whenever it turns up. This is a flag rather than a look
+  // at what is on screen, because the screen that asked for it may already
+  // have closed by the time the browser gets round to telling us.
+  if (releasing) {
+    releasing = false;
+    return;
+  }
+
+  // See REVOKE_MS: a lock revoked the instant it was granted leaves the street
+  // exactly as it was, for the click handler below to pick up.
+  if (performance.now() - lockedAt < REVOKE_MS) {
+    hud.hidden = false;
+    return;
+  }
+
   hud.hidden = true;
   // Losing the lock on its own — Esc, or the tab going to the background —
-  // means the player stepped away, so pause. Unless we let go of it ourselves
-  // to open the backpack, or a menu screen is already up.
-  if (!inventory.isOpen && !menu.isOpen) menu.show("pause");
+  // means the player stepped away, so pause. Unless a menu is already up.
+  if (!workshop.isOpen && !menu.isOpen) menu.show("pause");
+});
+
+/**
+ * A click in the street takes the pointer back.
+ *
+ * This is the recovery for every lock request that gets refused, and refusals
+ * are ordinary rather than exceptional: a request made from Escape is always
+ * turned down, and one made too soon after an Escape exit usually is. Rather
+ * than guessing which, the street stays on screen and the first click puts the
+ * player back in it — the same gesture that started the game.
+ */
+canvas.addEventListener("pointerdown", () => {
+  if (menu.isOpen || workshop.isOpen || player.controls.isLocked) return;
+  enterStreet();
 });
 
 // Opening a tab drops pointer lock, which is what anyone clicking a link
@@ -242,16 +371,20 @@ window.addEventListener("keydown", (e) => {
   }
 
   if (e.code === "KeyI") {
-    if (inventory.isOpen) closeBackpack();
-    else if (player.controls.isLocked) openBackpack();
+    // While a menu is up over the workshop it owns the keyboard: closing
+    // underneath it would leave the menu floating over the street.
+    if (menu.isOpen) return;
+    if (workshop.isOpen) closeWorkshop();
+    else if (player.controls.isLocked) openWorkshop();
     return;
   }
 
   if (e.code !== "Escape") return;
 
   // Escape while locked is the browser's to handle: it drops the lock and the
-  // unlock listener above brings up the pause screen.
-  if (inventory.isOpen) closeBackpack();
+  // unlock listener above brings up the pause screen. The workshop handles its
+  // own Escape and calls back into closeWorkshop, so it is not repeated here.
+  if (workshop.isOpen) return;
   else if (menu.current && menu.current !== "main" && menu.current !== "pause")
     menu.back();
   else if (menu.current === "pause") enterStreet();

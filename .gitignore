@@ -10,3 +10,5 @@ dist
 .env
 .env.*
 !.env.example
+
+tempfiles

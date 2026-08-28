@@ -35,6 +35,8 @@ export type MenuHandlers = {
   /** Fires on every change, including the stored one restored at start-up. */
   onBrushSizing: (sizing: BrushSizing) => void;
   onResume: () => void;
+  /** The can workshop, reached from the pause screen as well as from the street. */
+  onWorkshop: () => void;
   onQuit: () => void;
 };
 
@@ -116,6 +118,7 @@ export class Menu {
       // Play does not start anything: it asks how you want to move first.
       if (action === "play") this.show("modes");
       else if (action === "resume") this.handlers.onResume();
+      else if (action === "workshop") this.handlers.onWorkshop();
       else if (action === "quit") this.handlers.onQuit();
       else if (action === "controls") this.show("controls");
       else if (action === "settings") this.show("settings");

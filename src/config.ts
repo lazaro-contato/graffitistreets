@@ -432,9 +432,13 @@ export const CAP_CATEGORIES: readonly { id: CapCategory }[] = [
 ];
 
 export type CapId =
-  | "circle"
+  | "skinny"
+  | "standard"
+  | "nyfat"
+  | "ultrafat"
+  | "splatter"
+  | "softcap"
   | "square"
-  | "flare"
   | "calligraphy"
   | "marker"
   | "roller";
@@ -467,7 +471,21 @@ export type CapDefinition = {
 
 export const CAPS: readonly CapDefinition[] = [
   {
-    id: "circle",
+    id: "skinny",
+    category: "cap",
+    shape: "ellipse",
+    aspect: 1,
+    angle: 0,
+    // A third of the standard cone. This is the outline and the signature —
+    // the sizes below are a ladder, and this is its bottom rung.
+    size: 0.32,
+    softness: 0.4, // tighter edge than the others: a thin line has to stay one
+    flow: 1.15,
+    grain: 0.5,
+    twists: false,
+  },
+  {
+    id: "standard",
     category: "cap",
     shape: "ellipse",
     aspect: 1,
@@ -476,6 +494,57 @@ export const CAPS: readonly CapDefinition[] = [
     softness: 0.6,
     flow: 1,
     grain: 1,
+    twists: false,
+  },
+  {
+    id: "nyfat",
+    category: "cap",
+    shape: "ellipse",
+    aspect: 1,
+    angle: 0,
+    size: 1.45,
+    softness: 0.68,
+    // Wider cone, same paint: it has more wall to cover, so it bites less.
+    flow: 0.85,
+    grain: 1.25,
+    twists: false,
+  },
+  {
+    id: "ultrafat",
+    category: "cap",
+    shape: "ellipse",
+    aspect: 1,
+    angle: 0,
+    size: 2.4,
+    softness: 0.8,
+    flow: 0.55,
+    grain: 1.5,
+    twists: false,
+  },
+  {
+    id: "splatter",
+    category: "cap",
+    shape: "ellipse",
+    aspect: 1,
+    angle: 0,
+    size: 1.9,
+    softness: 0.95,
+    flow: 0.62,
+    grain: 1.8,
+    twists: false,
+  },
+  {
+    id: "softcap",
+    category: "cap",
+    shape: "ellipse",
+    aspect: 1,
+    angle: 0,
+    // The flare's twin, and the contrast is the point: same width, almost no
+    // grain and a third of the flow. One is texture, the other is a fade.
+    size: 1.8,
+    softness: 1,
+    flow: 0.3,
+    grain: 0.08,
     twists: false,
   },
   {
@@ -488,18 +557,6 @@ export const CAPS: readonly CapDefinition[] = [
     softness: 0.6,
     flow: 1,
     grain: 1,
-    twists: false,
-  },
-  {
-    id: "flare",
-    category: "cap",
-    shape: "ellipse",
-    aspect: 1,
-    angle: 0,
-    size: 1.9,
-    softness: 0.95,
-    flow: 0.62,
-    grain: 1.8,
     twists: false,
   },
   {
@@ -540,12 +597,57 @@ export const CAPS: readonly CapDefinition[] = [
   },
 ];
 
+/**
+ * A can: one cap, one colour, and how hard it is set to spray.
+ *
+ * `size` and `flow` are the same two multipliers `SprayCan` already carries,
+ * so equipping a can is assigning four fields rather than translating between
+ * two vocabularies. They are on the can rather than on the player because
+ * eight cans that differ only in colour would not be a loadout.
+ */
+export type CanSpec = {
+  cap: CapId;
+  color: string;
+  /** Cone width, SPRAY.MIN_SIZE..MAX_SIZE. */
+  size: number;
+  /** Multiplier on how hard the paint bites. 1 is the cap's own flow. */
+  flow: number;
+};
+
+export const LOADOUT = {
+  /** Cans in a preset. Eight, because that is what 1-8 reaches without a chord. */
+  CANS: 8,
+  /** Preset slots. Fixed rather than unlimited: there is never an empty list. */
+  PRESETS: 4,
+  /** Range the workshop's flow slider covers. */
+  MIN_FLOW: 0.25,
+  MAX_FLOW: 2,
+} as const;
+
+/**
+ * The loadout everybody starts with, and the one Reset restores.
+ *
+ * It is a tour rather than a set of favourites: a thin outline, the everyday
+ * cone, two coverage widths, both texture caps and both flat tools. Somebody
+ * who never opens the workshop should still meet most of what the game has.
+ */
+export const DEFAULT_CANS: readonly CanSpec[] = [
+  { cap: "skinny", color: "#111111", size: 1, flow: 1 },
+  { cap: "standard", color: "#ffffff", size: 1, flow: 1 },
+  { cap: "nyfat", color: "#e02020", size: 1, flow: 1 },
+  { cap: "ultrafat", color: "#1e5fe0", size: 1, flow: 1 },
+  { cap: "splatter", color: "#ffd400", size: 1, flow: 1 },
+  { cap: "softcap", color: "#00b8d4", size: 1, flow: 1 },
+  { cap: "calligraphy", color: "#2ecc40", size: 1, flow: 1 },
+  { cap: "roller", color: "#8b2fd4", size: 1, flow: 1 },
+];
+
 export const CAP_BY_ID = new Map(CAPS.map((cap) => [cap.id, cap]));
 
 export const capsIn = (category: CapCategory) =>
   CAPS.filter((cap) => cap.category === category);
 
-export const DEFAULT_CAP: CapId = "circle";
+export const DEFAULT_CAP: CapId = "standard";
 
 /** The base radius expressed in texture pixels, for canvas-space code. */
 export const BASE_RADIUS_PX =
@@ -563,3 +665,55 @@ export const PALETTE = [
   "#8b2fd4",
   "#ff4fa3",
 ] as const;
+
+/**
+ * Neon paint, which is not a brighter colour but a different material: it is
+ * written into a second map on the wall and emits light of its own.
+ *
+ * Every map in the game is night, lit by two hard lamps with a lot of dark
+ * between them — which is the one setting where this reads as anything at all.
+ * On a flat daylit wall it would be indistinguishable from a saturated colour.
+ *
+ * Deliberately none of these is a near-match for a colour in PALETTE. A neon
+ * cyan beside an ordinary cyan that differs only in glow is a pair people pick
+ * between by accident.
+ */
+export const NEON_PALETTE = [
+  "#39ff14",
+  "#00f0ff",
+  "#ff00e6",
+  "#ff073a",
+  "#faff00",
+  "#7d00ff",
+] as const;
+
+const NEON_SET = new Set<string>(NEON_PALETTE);
+
+/**
+ * Whether a colour glows.
+ *
+ * Looked up from the palette rather than carried on the stroke, which keeps
+ * `PaintMessage` exactly as it was — no new field to sync, migrate or forget.
+ * The trade is that a colour mixed by hand to one of these exact values glows
+ * too. That is a fair outcome rather than a bug: what makes paint neon is the
+ * pigment, and the pigment is the number.
+ */
+export const isNeon = (hex: string) => NEON_SET.has(hex.toLowerCase());
+
+export const NEON = {
+  /**
+   * How hard the paint emits, before tone mapping. Above 1 on purpose: the
+   * renderer is ACES filmic, which rolls the top off into a soft falloff
+   * instead of clipping, and that roll-off is what reads as a glow rather than
+   * as a flat bright patch.
+   */
+  INTENSITY: 1.6,
+  /**
+   * Resolution of the glow map, as a fraction of the panel's.
+   *
+   * Half. It is light rather than detail — nobody can see the edge of a glow —
+   * and this is the difference between the feature costing 25% more VRAM per
+   * panel and costing 100% more.
+   */
+  MAP_SCALE: 0.5,
+} as const;

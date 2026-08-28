@@ -2,13 +2,17 @@ import { stampDab } from "./Brush";
 import { capExtent } from "./CapGeometry";
 import {
   TEXTURE,
-  SPRAY,
   PANEL_TEXTURE_WIDTH,
   PANEL_TEXTURE_HEIGHT,
+  isNeon,
 } from "../config";
+import { dabSteps } from "./StrokeMath";
 import type { Stroke } from "../state/types";
 import { CAP_BY_ID, type CapId } from "../config";
 import type { WallStrip } from "../world/WallStrip";
+
+/** What "no light" is on the glow map. See stampAcrossPanels. */
+const GLOW_OFF = "#000000";
 
 export type RenderOptions = {
   /** When given, only these panel indices are drawn into. Used by repaint. */
@@ -41,19 +45,41 @@ function stampAcrossPanels(
   // clipped in half at a seam.
   const extent = capExtent(radiusPx, CAP_BY_ID.get(cap)!);
   const { first, last } = strip.panelRange(x - extent, x + extent);
+  const glowing = isNeon(color);
+
   for (let i = first; i <= last; i++) {
     if (restrictTo && !restrictTo.has(i)) continue;
     const panel = strip.panels[i];
-    stampDab(
-      panel.ctx,
-      x - i * PANEL_TEXTURE_WIDTH,
-      y,
-      radiusPx,
-      color,
-      alpha,
-      cap,
-      twist,
-    );
+    const localX = x - i * PANEL_TEXTURE_WIDTH;
+
+    stampDab(panel.ctx, localX, y, radiusPx, color, alpha, cap, twist);
+
+    // The glow map only has to be touched when there is glow to add, or glow
+    // already on this panel to take away. On a panel that has never seen neon
+    // — which is most of them, most of the time — this is one boolean.
+    if (glowing || panel.hasGlow) {
+      const scale = panel.glowScale;
+      // Ordinary paint over neon puts it out, and it does so by painting the
+      // glow map black through the very same dab — so a thin mist leaves some
+      // light showing and a solid pass does not.
+      //
+      // Black rather than an erase, because an emissiveMap is read as RGB and
+      // its alpha is ignored: destination-out would take the alpha down and
+      // leave the colour behind, and the wall would keep glowing under paint
+      // that had covered it.
+      stampDab(
+        panel.glowCtx,
+        localX * scale,
+        y * scale,
+        radiusPx * scale,
+        glowing ? color : GLOW_OFF,
+        alpha,
+        cap,
+        twist,
+      );
+      if (glowing) panel.hasGlow = true;
+    }
+
     panel.dirty = true;
   }
 }
@@ -104,9 +130,7 @@ export function renderStroke(
     const prevTwist = prev.w ?? 0;
     const twist = point.w ?? 0;
 
-    const dist = Math.hypot(x - px, y - py);
-    const step = Math.max(1, radiusPx * SPRAY.DAB_SPACING);
-    const steps = Math.ceil(dist / step);
+    const steps = dabSteps(Math.hypot(x - px, y - py), radiusPx);
 
     for (let s = 1; s <= steps; s++) {
       const t = s / steps;

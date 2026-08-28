@@ -48,6 +48,9 @@ export class WallSystem {
     for (const panel of this.panels) {
       if (panel.dirty) {
         panel.texture.needsUpdate = true;
+        // Uploaded together, because they are two halves of one change: a
+        // frame showing new paint without its glow would flicker dark.
+        panel.glowTexture.needsUpdate = true;
         panel.dirty = false;
       }
     }

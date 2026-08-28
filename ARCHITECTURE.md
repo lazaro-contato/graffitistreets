@@ -35,6 +35,7 @@ English.** Only `context.md`, the original spec, is in Portuguese.
 | 2.7   | Smaller arena (8 x 3 m walls) and a free flight mode          | Done   |
 | 2.8   | Menu: main, pause, controls, and mode as a setting            | Done   |
 | 2.9   | Menu artwork, display face, loading spinner, Portuguese copy  | Done   |
+| 2.10  | The can workshop: ten caps, eight cans, four presets           | Done   |
 | 3     | Polish: audio, IndexedDB persistence, PNG export, mobile     | To do  |
 | 4     | Server persistence (journal + WebP snapshots)                | To do  |
 | 5     | Multiplayer cities (Colyseus, avatars, lobby)                | To do  |
@@ -140,24 +141,93 @@ footprint and opacity do not move with range at all — see below.
 
 Two categories, and the split is not cosmetic:
 
-- **Caps** (circle, square, flare) are spray cones. Range drives their width
+- **Caps** (skinny, standard, NY fat, …) are spray cones. Range drives their width
   and their bite.
 - **Tools** (calligraphy, marker, roller) are pressed against the wall. They
   mark the same at any range.
 
-Six entries in all. The `triangle` *shape* primitive is still in
+Ten entries in all — a size ladder of cones (skinny, standard, NY fat, ultra
+fat), two variants of one width (splatter is grain, soft cap is a fade), a
+square, and three flat tools. The names are the scene's own, in English in both
+languages, because that is what they are called out loud. The `triangle` *shape* primitive is still in
 `CapGeometry`, unused by any current entry — it costs nothing and keeps adding
 a wedge cap a one-line change.
 
 A cap is **pure data** in `config.ts` — a category, a base outline (ellipse,
 rect or triangle), an aspect ratio, an angle, and how the paint comes out
 (size, softness, flow, grain). Adding one is adding a row. There is no per-cap
-branching in the brush, and the backpack builds its pockets from the
-categories, so a new entry needs no UI work at all.
+branching in the brush, and the workshop builds its rack from the list, so a
+new entry needs no UI work at all — including its card, whose sample is
+painted with the real brush rather than drawn by hand.
 
 Most caps do not turn with the stroke, and that is the point of the flat ones:
 a calligraphy cap paints thick across its edge and thin along it, which only
 works from a fixed angle. The roller is the exception — see below.
+
+## Neon paint glows
+
+Neon is not a brighter colour, it is a different material. Every panel carries
+a **second canvas** as the material's `emissiveMap`, and neon paint is written
+into it as well as onto the colour map — so it lights itself instead of waiting
+for a lamp. Every map is night with a lot of dark between two hard lamps, which
+is the one setting where this reads as anything at all.
+
+Four things this has to get right:
+
+- **The glow map is opaque black, and ordinary paint paints it black.** An
+  `emissiveMap` is sampled as RGB and its alpha is ignored, so "no light here"
+  must be a black pixel. Erasing with `destination-out` looks correct on the
+  canvas and does nothing at all on the wall: it takes the alpha down and
+  leaves the colour behind, and the wall keeps glowing through paint that
+  covered it. Painting the glow black through the same dab is both simpler and
+  the only version that works.
+- **It costs a quarter, not double.** The glow map is half resolution on each
+  axis — see `NEON.MAP_SCALE`. It is light rather than detail, and nobody can
+  see the edge of a glow.
+- **Panels that have never seen neon skip it entirely.** `WallPanel.hasGlow`
+  keeps the second stamp off the hot path for the common case, since ordinary
+  paint only has to blacken a glow map that has something on it.
+- **`paintBase()` blacks it out**, so undo and journal replay work on neon for
+  free: the wall goes back to bare and the surviving strokes put their own
+  light back as they are drawn again.
+
+Whether a colour glows is looked up from the palette rather than carried on the
+stroke, which leaves `PaintMessage` untouched — no new field to sync, migrate
+or forget. The trade is that a colour mixed by hand to a neon value glows too,
+which is the right outcome: what makes paint neon is the pigment.
+
+---
+
+## Eight cans, four presets
+
+What the player carries is a **loadout**, not a colour and a cap: eight cans,
+each holding a cap, a colour, a width and a strength, reached in the street
+with 1-8 or the wheel. Four preset slots hold four of those loadouts.
+
+`state/Loadout.ts` owns it and persists every change immediately — there is no
+Save button, because a workshop where an edit can be lost is a workshop people
+back out of. `SprayCan` is downstream: `main.ts` equips the selected can into
+it and nothing else writes to it.
+
+Two things this has to get right:
+
+- **Anything read off disk is clamped before it is believed.** A cap id that no
+  longer exists, a size out of range, a colour that is not a colour — all fall
+  back to the default for that slot rather than reaching the brush.
+- **The practice wall is the real paint.** It shares the base coat, the brush,
+  the dab spacing, the twist tracker, the dwell tracker and the drip simulation
+  with the street, and paint reaches it through a Transport the same way. A
+  preview with its own painting code would answer a different question from the
+  one being asked.
+- **It needs its own clock, and that is not obvious.** The street samples at a
+  fixed 60 Hz off the frame delta; the practice wall has no frame loop of its
+  own unless it is given one. Sampling per pointer event instead looks right
+  and is not: time stops existing on the wall. Holding the trigger still leaves
+  a single dab where the street lays a hundred and twenty and then lets the
+  paint run, and moving slowly comes out no darker than moving fast — which is
+  the one thing a spray can is most about.
+
+---
 
 ## The roller turns with your wrist
 
@@ -237,7 +307,7 @@ Four states, and only one of them holds the pointer:
 | menu: main | free | Play, mode setting, Controls |
 | menu: pause | free | Resume, Controls, Quit to menu |
 | menu: controls | free | key list, Back |
-| backpack | free | cap slots |
+| workshop | free | caps, colours, the eight cans, a practice wall |
 
 Everything except `playing` needs a real mouse cursor, so lock state and screen
 state must never drift apart. `main.ts` owns the machine: every way back into
@@ -246,7 +316,7 @@ reason — Esc, the tab going to the background — raises the pause screen.
 
 Two things this has to get right:
 
-- **Not every unlock is the player leaving.** Opening the backpack releases the
+- **Not every unlock is the player leaving.** Opening the workshop releases the
   lock deliberately, so the unlock listener checks for that before pausing.
 - **A lock request can be refused.** Browsers reject one that arrives too soon
   after an Esc exit, and there is no way to ask in advance. `enterStreet` takes
@@ -434,7 +504,14 @@ src/
     styles.css
     Hud.ts                  palette, color shortcuts, alt + wheel resize
     Menu.ts                 main, pause and controls screens
-    Inventory.ts            the backpack, opened with I
+    workshop/
+      Workshop.ts           the screen: composes the sectors, owns the keys
+      CapRack.ts            cap cards, samples painted with the real brush
+      ColourBench.ts        the ten stock colours, and the way to mix others
+      CanRack.ts            eight cans and four presets
+      PracticeWall.ts       a wall to try a can on, and the two dials
+      ColourPicker.ts       the mixer, the one screen a choice can be dropped on
+      ColourMath.ts         hex/rgb/hsv, and which ink reads on which paint
     CapIcons.ts             cap outlines as SVG, generated from the same geometry
     SprayCursor.ts          the cap outline, sized to the real footprint
 ```
@@ -514,7 +591,8 @@ const py = (1 - uv.y) * TEXTURE.SIZE;
 
 ## Performance notes
 
-- **Memory budget:** `TEXTURE.PIXELS_PER_METER` is the single knob. At 192 the
+- **Memory budget:** `TEXTURE.PIXELS_PER_METER` is the single knob, and the
+  glow map adds a quarter on top of whatever it sets. At 192 the
   panels are 1152 x 768 and 20 of them cost ~68 MB of VRAM; 256 costs ~120 MB.
   Both dimensions are derived from it, so the resolution stays uniform on both
   axes — a square canvas on a 6 x 4 m panel is what used to turn every spray

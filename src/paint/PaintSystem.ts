@@ -1,17 +1,14 @@
-import { SPRAY, DRIP, WORLD, CAP_BY_ID } from "../config";
+import { SPRAY, WORLD, CAP_BY_ID } from "../config";
 import { SprayCan } from "./SprayCan";
 import type { Aim, AimResult } from "./Aim";
 import type { DripSystem } from "./DripSystem";
 import type { Transport } from "../net/Transport";
 import type { Stroke, StrokePoint } from "../state/types";
 import type { Side } from "../config";
+import { TwistTracker } from "./Twist";
+import { DwellTracker } from "./Dwell";
 
 const SAMPLE_INTERVAL = 1 / SPRAY.SAMPLE_HZ;
-
-/** Wraps an angle to (-PI, PI], so a turn is always the short way round. */
-function wrapAngle(radians: number) {
-  return Math.atan2(Math.sin(radians), Math.cos(radians));
-}
 
 /**
  * The only place that builds strokes.
@@ -22,19 +19,11 @@ export class PaintSystem {
   private activeSide: Side | null = null;
   private accumulator = 0;
 
-  /** Heading of the stroke's first real movement, in canvas angle terms. */
-  private twistOrigin = 0;
-  private twistAnchored = false;
-  private twist = 0;
+  /** Turns a cap that follows the stroke. Only the roller opts in. */
+  private twister = new TwistTracker();
 
   /** Where the spray has been sitting, and for how long. See trackDwell. */
-  private dwellU = 0;
-  private dwellV = 0;
-  private dwellTime = 0;
-  /** Total time held on this spot. Unlike dwellTime, a run does not reset it. */
-  private dwellSoak = 0;
-  private dwellAnchored = false;
-  private dwellHasRun = false;
+  private dwell = new DwellTracker();
 
   constructor(
     private aim: Aim,
@@ -46,13 +35,13 @@ export class PaintSystem {
 
   /** Current cap twist, so the cursor can show the same angle it will paint. */
   get capTwist() {
-    return this.twist;
+    return this.twister.current;
   }
 
   update(isPainting: boolean, dt: number) {
     if (!isPainting) {
       this.endStroke();
-      this.resetDwell();
+      this.dwell.reset();
       return;
     }
 
@@ -125,16 +114,11 @@ export class PaintSystem {
   }
 
   /**
-   * Turns the cap with the stroke.
+   * Twist for the point about to be recorded.
    *
-   * The angle is measured against the heading the stroke *started* with, not
-   * against the wall, so a cap keeps whatever grip it was laid down at: begin
-   * rolling upwards and it stays across the travel through a turn; begin
-   * sideways and it stays along it. Either way, arcing mid-stroke swings it
-   * round, and the lag is what puts it on the diagonal while it catches up.
-   *
-   * The lag is spent in travel rather than in time, because the swing comes
-   * from dragging the thing, not from holding still.
+   * The maths lives in TwistTracker, shared with the workshop's practice wall.
+   * All this adds is the conversion from strip UV to metres on the wall, which
+   * only this side knows how to do.
    */
   private trackTwist(u: number, v: number): number {
     if (!CAP_BY_ID.get(this.can.cap)!.twists) return 0;
@@ -143,81 +127,43 @@ export class PaintSystem {
     if (!prev) return 0;
 
     // Canvas angle terms: v grows up the wall, y grows down the canvas.
-    const dx = (u - prev.u) * WORLD.STREET_LENGTH;
-    const dy = -(v - prev.v) * WORLD.WALL_HEIGHT;
-    const step = Math.hypot(dx, dy);
-    if (step < SPRAY.TWIST_MIN_STEP_M) return this.twist;
-
-    const heading = Math.atan2(dy, dx);
-    if (!this.twistAnchored) {
-      this.twistOrigin = heading;
-      this.twistAnchored = true;
-      return this.twist;
-    }
-
-    const turned = wrapAngle(heading - this.twistOrigin);
-    this.twist +=
-      wrapAngle(turned - this.twist) *
-      (1 - Math.exp(-step / SPRAY.TWIST_LAG_M));
-    return this.twist;
+    return this.twister.advance(
+      (u - prev.u) * WORLD.STREET_LENGTH,
+      -(v - prev.v) * WORLD.WALL_HEIGHT,
+    );
   }
 
   /**
-   * Watches for the spray sitting still on one spot.
+   * Watches for the spray sitting still on one spot, and spawns a run when it
+   * floods.
    *
-   * Distance is measured on the wall in meters, not in UV: u spans 60 m and v
-   * spans 4 m, so a UV radius would be a flat ellipse. The tolerance scales
-   * with the cone, since holding a wide spray steady within a few centimetres
-   * is still the same spot as far as the wall is concerned.
+   * The maths lives in DwellTracker, shared with the workshop's practice wall.
+   * All this adds is the conversion from strip UV to metres on the wall, which
+   * only this side knows how to do.
    */
   private trackDwell(target: AimResult, dt: number) {
     if (!target.paintable || !target.panel) {
-      this.resetDwell();
+      this.dwell.reset();
       return;
     }
 
     const sprayRadius = this.can.radiusAt(target.distance);
-    const tolerance = Math.max(
-      DRIP.MIN_HOLD_RADIUS,
-      sprayRadius * DRIP.HOLD_RADIUS,
+    const soak = this.dwell.advance(
+      target.u * WORLD.STREET_LENGTH,
+      target.v * WORLD.WALL_HEIGHT,
+      sprayRadius,
+      dt,
     );
+    if (soak === null) return;
 
-    const dx = (target.u - this.dwellU) * WORLD.STREET_LENGTH;
-    const dy = (target.v - this.dwellV) * WORLD.WALL_HEIGHT;
-
-    if (!this.dwellAnchored || Math.hypot(dx, dy) > tolerance) {
-      this.dwellU = target.u;
-      this.dwellV = target.v;
-      this.dwellTime = 0;
-      this.dwellSoak = 0;
-      this.dwellAnchored = true;
-      this.dwellHasRun = false;
-      return;
-    }
-
-    this.dwellTime += dt;
-    this.dwellSoak += dt;
-    const threshold = this.dwellHasRun ? DRIP.REPEAT_TIME : DRIP.HOLD_TIME;
-    if (this.dwellTime < threshold) return;
-
-    // Saturated. Let it run, and let an already soaked spot run again sooner.
-    this.dwellTime = 0;
-    this.dwellHasRun = true;
     this.drips.spawn(
       target.panel.side,
       target.u,
       target.v,
       this.can.color,
       sprayRadius,
-      this.dwellSoak,
+      soak,
     );
-  }
-
-  private resetDwell() {
-    this.dwellAnchored = false;
-    this.dwellTime = 0;
-    this.dwellSoak = 0;
-    this.dwellHasRun = false;
   }
 
   private endStroke() {
@@ -229,7 +175,6 @@ export class PaintSystem {
     }
     this.activeStroke = null;
     this.activeSide = null;
-    this.twistAnchored = false;
-    this.twist = 0;
+    this.twister.reset();
   }
 }

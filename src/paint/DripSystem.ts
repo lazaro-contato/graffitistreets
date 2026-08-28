@@ -132,7 +132,7 @@ export class DripSystem {
       side: drip.side,
       color: drip.color,
       // A running bead is liquid, so it is round whatever cap sprayed it.
-      cap: "circle",
+      cap: "standard",
       point: {
         u: drip.u,
         v: Math.max(0, drip.v),
