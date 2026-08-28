@@ -161,7 +161,7 @@ const menu = new Menu({
   },
   onBrushSizing: (sizing) => can.setSizing(sizing),
   onResume: () => enterStreet(),
-  onWorkshop: () => openWorkshop("pause"),
+  onWorkshop: () => openWorkshop(),
   onQuit: () => menu.show("main"),
 });
 
@@ -226,18 +226,8 @@ document.addEventListener("pointerlockerror", () => {
   refuge = null;
 });
 
-/**
- * Where the workshop was opened from, and therefore where closing it goes.
- *
- * Opened with I from the street, it hands the pointer back on the way out.
- * Opened from the pause screen, the player was already out of the street and
- * dropping them back into it would be a door they did not ask to go through.
- */
-let workshopFrom: "street" | "pause" = "street";
-
-function openWorkshop(from: "street" | "pause") {
+function openWorkshop() {
   if (workshop.isOpen) return;
-  workshopFrom = from;
   hint.dismiss();
   menu.hide();
   workshop.open();
@@ -245,25 +235,24 @@ function openWorkshop(from: "street" | "pause") {
   player.controls.unlock();
 }
 
+/**
+ * Shuts the workshop and puts the player back in the street.
+ *
+ * Always the street, whichever door they came in by. The workshop is only
+ * reachable from inside a game — with I from the street, or from the pause
+ * screen — so there is nowhere else that closing it could sensibly mean, and
+ * sending anyone back to a menu they had already left is the bug this keeps
+ * being: they asked to close the workshop, not to open something else.
+ *
+ * The lock request is expected to fail when Escape made it, because browsers
+ * refuse one from that key. It is asked for anyway, and the click handler
+ * below is what actually recovers: the street is on screen either way.
+ */
 function closeWorkshop() {
   if (!workshop.isOpen) return;
   // Shut on the spot: pressing I again has to close it whether or not the
   // pointer comes back.
   workshop.close();
-
-  if (workshopFrom === "pause") {
-    menu.show("pause");
-    return;
-  }
-
-  // Back to the street, with no refuge. Escape is the usual way out of here
-  // and Escape cannot take the pointer: browsers refuse a lock requested from
-  // it, so this asks and expects to be told no. Falling back to the pause
-  // screen — which is what a refuge would do — meant leaving the workshop
-  // landed you in a menu you never asked for.
-  //
-  // So the street comes back either way, and the click below takes the
-  // pointer. A visible HUD and a cursor is not being stranded.
   hud.hidden = false;
   enterStreet();
 }
@@ -316,7 +305,7 @@ window.addEventListener("keydown", (e) => {
 
   if (e.code === "KeyI") {
     if (workshop.isOpen) closeWorkshop();
-    else if (player.controls.isLocked) openWorkshop("street");
+    else if (player.controls.isLocked) openWorkshop();
     return;
   }
 
