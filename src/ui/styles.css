@@ -705,7 +705,10 @@ a.menu-item {
   padding: 0 var(--wk-gap) var(--wk-gap);
   background: var(--wk-ink);
   color: var(--wk-chrome);
-  overflow: auto;
+  /* One screen, never scrolled. What has to give is the cap list, which has
+     its own scroll; everything else is either fixed or a fraction of what is
+     left. A workbench you have to scroll to see the tools on is not one. */
+  overflow: hidden;
 }
 
 #workshop[hidden] {
@@ -773,36 +776,43 @@ a.menu-item {
    Stretching the bench instead would leave a hole under the cap cards, which
    reads as a panel that failed to load rather than as breathing room. */
 .wk-stage {
-  /* Natural height, never squeezed. Squeezing is what silently clipped the
-     cap detail strip off the bottom of its panel on a short window: the grid
-     rows gave way before the cap list, which has its own scroll, ever did.
-     When it will not fit, the workshop scrolls instead. */
-  flex: 0 0 auto;
+  flex: 1;
+  min-height: 0;
   display: grid;
   gap: var(--wk-gap);
   grid-template-columns: minmax(0, 1.35fr) minmax(20rem, 1fr);
-  grid-template-rows: auto auto;
-  align-items: start;
+  /* The cap row takes what is left and the colour bench takes what it needs.
+     minmax(0, …) rather than 1fr alone, or the row refuses to shrink below its
+     content and the panel spills past the bottom of the screen. */
+  grid-template-rows: minmax(0, 1fr) auto;
 }
 
+/* Content height, capped at the row. On a tall screen the panel ends where its
+   cards do, so the slack falls between panels as background rather than as a
+   hole inside a bordered box; on a short one the cap clamps it and the grid
+   inside starts scrolling. */
 .wk-panel--caps {
   grid-column: 1;
   grid-row: 1;
+  align-self: start;
+  max-height: 100%;
 }
 .wk-panel--colour {
   grid-column: 1;
   grid-row: 2;
+  align-self: end;
 }
 .wk-panel--wall {
   grid-column: 2;
   grid-row: 1 / span 2;
-  align-self: stretch;
 }
 
 .wk-panel {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  /* A panel is a window onto its contents, never a hole they leak out of. */
+  overflow: hidden;
   background: var(--wk-panel);
   border: 1px solid var(--wk-edge);
   border-radius: 0.25rem;
@@ -861,11 +871,11 @@ a.menu-item {
   grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
   grid-auto-rows: min-content;
   align-content: start;
-  /* Bounded by what is actually left, not by a fraction of the window. The
-     can rack is the point of this screen and has to stay on it, so the cap
-     list gives up its height first — 29rem is everything below the grid plus
-     the header, measured rather than guessed. */
-  max-height: clamp(8rem, calc(100vh - 29rem), 30rem);
+  /* The one thing on the screen that gives. It takes whatever the row has
+     left and scrolls past it, so adding an eleventh cap costs nothing but a
+     little more scrolling. */
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   /* Room for the scrollbar, so the last column is not clipped by it. */
   padding-right: 0.15rem;
@@ -1092,7 +1102,7 @@ a.menu-item {
 
 .wk-wall {
   flex: 1;
-  min-height: 16rem;
+  min-height: 0;
   position: relative;
   border: 1px solid #000;
   background: #131210;
@@ -1101,7 +1111,15 @@ a.menu-item {
   touch-action: none;
 }
 
+/* Absolutely positioned, and that is load-bearing rather than tidy. A canvas
+   carries an intrinsic size from its width/height attributes, and those are
+   exactly what PracticeWall writes to match the element. In normal flow, with
+   `height: 100%` resolving against a container whose own height comes from its
+   content, each measurement fed the next one and the wall grew every frame
+   until the workshop scrolled. Out of flow, it can never size its parent. */
 .wk-wall canvas {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
