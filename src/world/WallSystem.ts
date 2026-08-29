@@ -37,6 +37,11 @@ export class WallSystem {
     return this.panels[id];
   }
 
+  /** Scales the paint's own light on every panel. See WallPanel.setGlow. */
+  setGlow(scale: number) {
+    for (const panel of this.panels) panel.setGlow(scale);
+  }
+
   /**
    * Dresses one side in a different photograph.
    *

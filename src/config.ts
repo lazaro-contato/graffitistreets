@@ -30,7 +30,38 @@ export const WORLD = {
  * Spot intensities are in candela and fall off with the square of distance,
  * which is why the lamp number is large and the fills are not.
  */
-export const NIGHT = {
+/** Night or day. Chosen in the settings, and it changes every light at once. */
+export type TimeOfDay = "night" | "day";
+export const TIMES_OF_DAY: readonly { id: TimeOfDay }[] = [
+  { id: "night" },
+  { id: "day" },
+];
+export const DEFAULT_TIME_OF_DAY: TimeOfDay = "night";
+
+/**
+ * Everything the sky decides.
+ *
+ * One shape for both times so switching is a swap rather than two code paths.
+ * The key light is the moon at night and the sun by day — same slot, because
+ * from the alley floor the difference is colour, angle and how hard it lands.
+ */
+export type SkySpec = {
+  SKY: string;
+  FOG_NEAR: number;
+  FOG_FAR: number;
+  FILL_SKY: string;
+  FILL_GROUND: string;
+  FILL_INTENSITY: number;
+  KEY_COLOR: string;
+  KEY_INTENSITY: number;
+  KEY_POSITION: readonly [number, number, number];
+  /** Multiplier on LAMP.INTENSITY. A street lamp at noon is off. */
+  LAMPS: number;
+  /** Multiplier on NEON.INTENSITY, and on the lamp head's own emission. */
+  GLOW: number;
+};
+
+export const NIGHT: SkySpec = {
   SKY: "#0a0d14",
   FOG_NEAR: 8,
   FOG_FAR: 34,
@@ -43,9 +74,45 @@ export const NIGHT = {
   FILL_GROUND: "#0b0b10",
   FILL_INTENSITY: 0.16,
 
-  MOON_COLOR: "#8fa4d4",
-  MOON_INTENSITY: 0.18,
-} as const;
+  KEY_COLOR: "#8fa4d4", // the moon
+  KEY_INTENSITY: 0.18,
+  KEY_POSITION: [-8, 14, -6],
+
+  LAMPS: 1,
+  GLOW: 1,
+};
+
+/**
+ * Overcast midday, not a postcard noon.
+ *
+ * The reason is the walls: a hard sun down a north-south alley throws one wall
+ * into a black slab of shadow and blows the other out, and both are unpaintable.
+ * A high bright sky lights both faces evenly, which is what a photograph of a
+ * wall is taken in and what this whole texture set was generated to match.
+ *
+ * Fog goes far rather than off. It is what keeps the enclosure from reading as
+ * a box with an edge, and daylight needs that more than night does.
+ */
+export const DAY: SkySpec = {
+  SKY: "#aebbc9",
+  FOG_NEAR: 18,
+  FOG_FAR: 90,
+
+  FILL_SKY: "#cdddef",
+  FILL_GROUND: "#6b6459",
+  FILL_INTENSITY: 2.1,
+
+  KEY_COLOR: "#fff4e2", // the sun, through cloud
+  KEY_INTENSITY: 1.5,
+  KEY_POSITION: [-6, 20, -3],
+
+  LAMPS: 0,
+  // Neon barely registers against daylight, and paint that glowed as hard at
+  // noon as at midnight is the fastest way to make the day look fake.
+  GLOW: 0.18,
+};
+
+export const SKIES: Record<TimeOfDay, SkySpec> = { night: NIGHT, day: DAY };
 
 /**
  * The street lamps: two of them, one per side, at opposite ends.

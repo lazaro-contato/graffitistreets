@@ -54,7 +54,10 @@ const engine = new Engine(canvas);
 const loop = new Loop();
 const input = new Input(canvas);
 
-buildStreet(engine.scene, await loadRoadSurface(() => loading.advance()));
+const sky = buildStreet(
+  engine.scene,
+  await loadRoadSurface(() => loading.advance()),
+);
 
 // What this deployment has to dress a wall with. Read before the walls exist,
 // because the choice of surface decides which files are fetched next.
@@ -80,6 +83,10 @@ await loading.breathe();
 // Building the panels blocks the main thread, so let the bar paint first.
 const walls = new WallSystem(surfaces);
 engine.scene.add(walls.group);
+// The paint's own light belongs to the panels, so the sky reports rather than
+// reaches. This also applies the starting sky, now that there is something to
+// apply it to.
+sky.glowsWith((scale) => walls.setGlow(scale));
 loading.advance();
 await loading.breathe();
 
