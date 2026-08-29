@@ -151,6 +151,59 @@ export const SURFACES: Record<Side, SurfaceSpec> = {
 };
 
 /**
+ * A surface as the manifest describes it: a folder name and who it belongs to.
+ *
+ * The file paths are not in here on purpose. They are `/wall/<slug>/albedo.jpg`
+ * and its two siblings, always, which is what makes contributing a wall a JSON
+ * entry and three files rather than a code change.
+ *
+ * `licence` and `sourceUrl` are not decoration. ASSETS.md is the record of who
+ * owns what in this repository, and a surface that cannot say where it came
+ * from cannot be shipped in it.
+ */
+export type SurfaceEntry = {
+  slug: string;
+  /** Shown in the picker. Not translated — it is a name, not copy. */
+  title: string;
+  /** Null for a surface that is not from anywhere in particular. */
+  city: string | null;
+  country: string | null;
+  author: string;
+  /** An SPDX identifier where there is one: "CC0-1.0", "CC-BY-4.0". */
+  licence: string;
+  sourceUrl: string | null;
+  /** As in SurfaceSpec: how much wall one tile of those images covers. */
+  tileMeters: number;
+};
+
+/**
+ * The one surface the code knows about without reading anything.
+ *
+ * A fork with no manifest — or a manifest that fails to parse — still gets a
+ * dressed wall rather than an empty picker, which is the same bargain the
+ * missing-file fallback makes everywhere else here.
+ */
+export const BUILT_IN_SURFACE: SurfaceEntry = {
+  slug: "concrete031",
+  title: "Concrete 031",
+  city: null,
+  country: null,
+  author: "ambientCG",
+  licence: "CC0-1.0",
+  sourceUrl: "https://ambientcg.com/view?id=Concrete031",
+  tileMeters: 2.4,
+};
+
+/** Where the manifest lives, relative to the site root. */
+export const SURFACE_MANIFEST_URL = "/wall/surfaces.json";
+
+/** Which surface dresses which side before anybody picks anything. */
+export const DEFAULT_SURFACE_SLUGS: Record<Side, string> = {
+  left: BUILT_IN_SURFACE.slug,
+  right: BUILT_IN_SURFACE.slug,
+};
+
+/**
  * The road.
  *
  * One tile spans the full width on purpose. The photograph carries a painted
