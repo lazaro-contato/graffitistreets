@@ -8,6 +8,8 @@ import {
   loadWallSurfaces,
   loadRoadSurface,
   loadAdTextures,
+  imageFromBlob,
+  photoSurface,
 } from "./world/Surfaces";
 import { loadCatalogue, entryFor, specOf } from "./world/SurfaceCatalogue";
 import { buildBillboards } from "./world/Billboard";
@@ -34,7 +36,16 @@ import {
   getLocale,
   onLocaleChange,
 } from "./i18n/i18n";
-import { ADS, DEFAULT_SURFACE_SLUG, LINKS, SIDES } from "./config";
+import { WallDrop } from "./ui/WallDrop";
+import { savePhoto } from "./state/WallPhotos";
+import {
+  ADS,
+  DEFAULT_SURFACE_SLUG,
+  LINKS,
+  SIDES,
+  WALL_PHOTO,
+  type Side,
+} from "./config";
 
 const canvas = document.getElementById("app") as HTMLCanvasElement;
 const hud = document.getElementById("hud")!;
@@ -199,6 +210,32 @@ async function redress(slug: string) {
     store.repaintSide(side);
   }
 }
+
+/**
+ * Puts a photograph the player dropped in on one wall.
+ *
+ * The file is kept on their machine and nowhere else — see state/WallPhotos.
+ * Saving happens after the wall is dressed rather than before it, so a browser
+ * that refuses IndexedDB still shows the photo for this visit instead of
+ * refusing the drop over a store nobody asked for.
+ */
+async function dropPhoto(side: Side, file: File) {
+  const image = await imageFromBlob(file);
+  // Not an image after all: it claimed a MIME type it could not decode.
+  if (!image) return;
+
+  walls.dress(side, photoSurface(image, WALL_PHOTO.DEFAULT_TILE_METERS));
+  store.repaintSide(side);
+
+  void savePhoto(side, {
+    blob: file,
+    tileMeters: WALL_PHOTO.DEFAULT_TILE_METERS,
+  });
+}
+
+new WallDrop(canvas, engine.camera, walls, {
+  onDrop: (side, file) => void dropPhoto(side, file),
+});
 
 const menu = new Menu(
   {

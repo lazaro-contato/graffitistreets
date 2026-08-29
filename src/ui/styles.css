@@ -23,6 +23,17 @@ body {
   font-family: system-ui, sans-serif;
 }
 
+/* Dragging an image over the street. An inset edge rather than an overlay: the
+   walls have to stay visible while a file is over them, because which wall the
+   drop lands on is decided by where it is let go. See ui/WallDrop.ts. */
+#app[data-dropping="on"] {
+  box-shadow: inset 0 0 0 3px var(--neon);
+}
+
+#app[data-dropping="refused"] {
+  box-shadow: inset 0 0 0 3px #ff3b30;
+}
+
 /* Shutter flash for a photo. Sits above the canvas but under every panel, and
    is inert until the class goes on. */
 #flash {
