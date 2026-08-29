@@ -211,6 +211,7 @@ const menu = new Menu(
       void redress(slug);
     },
     onBrushSizing: (sizing) => can.setSizing(sizing),
+    onTimeOfDay: (time) => sky.set(time),
     onResume: () => enterStreet(),
     onWorkshop: () => {
       // Reachable while the workshop is already open, since the pause screen

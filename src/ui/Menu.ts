@@ -2,9 +2,12 @@ import {
   MOVEMENT_MODES,
   BRUSH_SIZINGS,
   DEFAULT_BRUSH_SIZING,
+  TIMES_OF_DAY,
+  DEFAULT_TIME_OF_DAY,
   type BrushSizing,
   type MovementMode,
   type SurfaceEntry,
+  type TimeOfDay,
 } from "../config";
 import { LOCALES, type Locale } from "../i18n/strings";
 import { t, getLocale, setLocale, onLocaleChange } from "../i18n/i18n";
@@ -17,6 +20,17 @@ export type MenuScreen =
   | "pause";
 
 const BRUSH_KEY = "graffiti.brushSizing";
+const TIME_KEY = "graffiti.timeOfDay";
+
+function storedTimeOfDay(): TimeOfDay {
+  try {
+    const saved = localStorage.getItem(TIME_KEY);
+    if (saved === "day" || saved === "night") return saved;
+  } catch {
+    // private mode — fall through to the default
+  }
+  return DEFAULT_TIME_OF_DAY;
+}
 
 function storedBrushSizing(): BrushSizing {
   try {
@@ -56,6 +70,8 @@ export type MenuHandlers = {
    * the wall system and the stroke store live below this.
    */
   onWallSurface: (slug: string) => void;
+  /** Fires on every change, including the stored one restored at start-up. */
+  onTimeOfDay: (time: TimeOfDay) => void;
   /** Fires on every change, including the stored one restored at start-up. */
   onBrushSizing: (sizing: BrushSizing) => void;
   onResume: () => void;
@@ -155,6 +171,9 @@ export class Menu {
   /** Restored from the last visit: a preference, not a per-session choice. */
   brushSizing: BrushSizing = storedBrushSizing();
 
+  /** Same: somebody who paints at night wants to come back to night. */
+  timeOfDay: TimeOfDay = storedTimeOfDay();
+
   constructor(
     private handlers: MenuHandlers,
     private walls: WallDressing,
@@ -178,6 +197,7 @@ export class Menu {
 
     this.buildModeChoices();
     this.buildBrushChoices();
+    this.buildTimeChoices();
     this.buildWallChoices();
     this.buildLanguageChoices();
     onLocaleChange(() => this.refreshWalls());
@@ -285,6 +305,47 @@ export class Menu {
    * through the translation table. A surface contributed from São Paulo says
    * São Paulo in English too.
    */
+  /**
+   * Night or day.
+   *
+   * Cards rather than pills, like the brush sizing above it, because each one
+   * needs a line saying what it changes — the difference is not only that it
+   * gets brighter, and somebody choosing day should know the neon goes with it.
+   */
+  private buildTimeChoices() {
+    const host = this.root.querySelector("#time-choices")!;
+    const buttons = new Map<TimeOfDay, HTMLButtonElement>();
+
+    const choose = (time: TimeOfDay) => {
+      this.timeOfDay = time;
+      try {
+        localStorage.setItem(TIME_KEY, time);
+      } catch {
+        // The choice still holds for this visit.
+      }
+      for (const [id, button] of buttons) {
+        button.setAttribute("aria-pressed", String(id === time));
+      }
+      this.handlers.onTimeOfDay(time);
+    };
+
+    for (const option of TIMES_OF_DAY) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "mode-card";
+      button.innerHTML =
+        `<strong data-i18n="time.${option.id}.label">` +
+        `${t(`time.${option.id}.label`)}</strong>` +
+        `<span data-i18n="time.${option.id}.hint">` +
+        `${t(`time.${option.id}.hint`)}</span>`;
+      button.addEventListener("click", () => choose(option.id));
+      buttons.set(option.id, button);
+      host.appendChild(button);
+    }
+
+    choose(this.timeOfDay);
+  }
+
   /**
    * Redraws the wall picker.
    *
