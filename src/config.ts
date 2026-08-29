@@ -200,11 +200,15 @@ export const BUILT_IN_SURFACE: SurfaceEntry = {
 /** Where the manifest lives, relative to the site root. */
 export const SURFACE_MANIFEST_URL = "/wall/surfaces.json";
 
-/** Which surface dresses which side before anybody picks anything. */
-export const DEFAULT_SURFACE_SLUGS: Record<Side, string> = {
-  left: BUILT_IN_SURFACE.slug,
-  right: BUILT_IN_SURFACE.slug,
-};
+/**
+ * The street the player lands in before picking anything.
+ *
+ * One slug, not one per side. The two walls can still be dressed separately —
+ * the engine has never assumed otherwise, and a photo dropped on one of them
+ * is exactly that — but choosing a place puts that place on both, because a
+ * street has the same walls down both sides of it.
+ */
+export const DEFAULT_SURFACE_SLUG = BUILT_IN_SURFACE.slug;
 
 /**
  * The road.

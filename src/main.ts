@@ -34,7 +34,7 @@ import {
   getLocale,
   onLocaleChange,
 } from "./i18n/i18n";
-import { ADS, DEFAULT_SURFACE_SLUGS, LINKS, type Side } from "./config";
+import { ADS, DEFAULT_SURFACE_SLUG, LINKS, SIDES } from "./config";
 
 const canvas = document.getElementById("app") as HTMLCanvasElement;
 const hud = document.getElementById("hud")!;
@@ -64,14 +64,14 @@ loading.advance();
 // Awaited before the walls exist, because the photograph is tiled into each
 // panel canvas as its base coat — there is no adding it afterwards without
 // repainting every panel. The loading screen is already up, in the markup.
-// Which surface is on which side. The menu edits this in place as choices are
-// made, so reopening the settings shows what is actually on the walls.
-const dressing: Record<Side, string> = { ...DEFAULT_SURFACE_SLUGS };
+// The street the player is standing in. The menu edits this in place as choices
+// are made, so reopening the settings shows what is actually on the walls.
+const dressing = { slug: DEFAULT_SURFACE_SLUG };
 
 const surfaces = await loadWallSurfaces(
   {
-    left: specOf(entryFor(catalogue, dressing.left)),
-    right: specOf(entryFor(catalogue, dressing.right)),
+    left: specOf(entryFor(catalogue, dressing.slug)),
+    right: specOf(entryFor(catalogue, dressing.slug)),
   },
   () => loading.advance(),
 );
@@ -185,10 +185,12 @@ buildPhoto(engine, () => player.controls.isLocked);
  * wall in procedural concrete instead of leaving the player looking at an
  * error they cannot act on.
  */
-async function redress(side: Side, slug: string) {
+async function redress(slug: string) {
   const surface = await loadWallSurface(specOf(entryFor(catalogue, slug)));
-  walls.dress(side, surface);
-  store.repaintSide(side);
+  for (const side of SIDES) {
+    walls.dress(side, surface);
+    store.repaintSide(side);
+  }
 }
 
 const menu = new Menu(
@@ -197,7 +199,10 @@ const menu = new Menu(
       player.setMode(menu.mode);
       enterStreet();
     },
-    onWallSurface: (side, slug) => void redress(side, slug),
+    onWallSurface: (slug) => {
+      dressing.slug = slug;
+      void redress(slug);
+    },
     onBrushSizing: (sizing) => can.setSizing(sizing),
     onResume: () => enterStreet(),
     onWorkshop: () => {
@@ -214,7 +219,7 @@ const menu = new Menu(
       menu.show("main");
     },
   },
-  { catalogue, current: dressing },
+  { catalogue, current: dressing.slug },
 );
 
 const workshop = new Workshop(loadout, {

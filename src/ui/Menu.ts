@@ -4,7 +4,6 @@ import {
   DEFAULT_BRUSH_SIZING,
   type BrushSizing,
   type MovementMode,
-  type Side,
   type SurfaceEntry,
 } from "../config";
 import { LOCALES, type Locale } from "../i18n/strings";
@@ -35,8 +34,16 @@ const SUB_SCREENS = new Set<MenuScreen>(["modes", "settings", "controls"]);
 /** What the wall picker needs to draw itself: the list, and what is on now. */
 export type WallDressing = {
   catalogue: readonly SurfaceEntry[];
-  /** Mutated by the menu as choices are made, so it survives a reopen. */
-  current: Record<Side, string>;
+  /**
+   * One surface, both walls. Mutated by the menu as choices are made, so it
+   * survives a reopen.
+   *
+   * The engine still dresses each side separately and always will — a wall
+   * somebody dropped a photo on is one side, not two. What is gone is asking
+   * the player to make that distinction: you are picking a street, and a street
+   * has the same walls on both sides of it.
+   */
+  current: string;
 };
 
 export type MenuHandlers = {
@@ -48,7 +55,7 @@ export type MenuHandlers = {
    * journal onto the new base coat is the caller's, in main.ts, because both
    * the wall system and the stroke store live below this.
    */
-  onWallSurface: (side: Side, slug: string) => void;
+  onWallSurface: (slug: string) => void;
   /** Fires on every change, including the stored one restored at start-up. */
   onBrushSizing: (sizing: BrushSizing) => void;
   onResume: () => void;
@@ -87,6 +94,38 @@ export const MENU_ART = "/menu-bg.jpg";
  * of this project saying who owns what, and a wall somebody sent in is exactly
  * the case where that matters most.
  */
+/**
+ * The group a surface with no city belongs to.
+ *
+ * A sentinel rather than null so the grouping is one Map keyed by string, and
+ * so the shipped concrete — which is from nowhere, because it is a texture
+ * library's — has a place to sit at the front of the list.
+ */
+const NO_CITY = "";
+
+function cityOf(entry: SurfaceEntry | undefined): string {
+  return entry?.city ?? NO_CITY;
+}
+
+/**
+ * The catalogue as cities, each holding its places, in manifest order.
+ *
+ * Insertion order is the manifest's order, which is the contributor's, so a
+ * city stays where whoever added it put it.
+ */
+function groupByCity(
+  catalogue: readonly SurfaceEntry[],
+): Map<string, SurfaceEntry[]> {
+  const groups = new Map<string, SurfaceEntry[]>();
+  for (const entry of catalogue) {
+    const key = cityOf(entry);
+    const list = groups.get(key);
+    if (list) list.push(entry);
+    else groups.set(key, [entry]);
+  }
+  return groups;
+}
+
 function creditLine(entry: SurfaceEntry): string {
   const place = [entry.city, entry.country].filter(Boolean).join(", ");
   return [place, entry.author, entry.licence].filter(Boolean).join(" · ");
@@ -261,62 +300,93 @@ export class Menu {
     const host = this.root.querySelector("#wall-choices")!;
     host.replaceChildren();
 
-    for (const side of ["left", "right"] as const) {
-      const row = document.createElement("div");
-      row.className = "wall-side";
+    // City first, then the place in it. Fifteen pills in one row was a list of
+    // textures; two rows is a list of streets, which is what somebody is
+    // actually looking for.
+    const groups = groupByCity(this.walls.catalogue);
 
-      const label = document.createElement("p");
-      label.className = "wall-side-label";
-      label.dataset.i18n = `wall.side.${side}`;
-      label.textContent = t(`wall.side.${side}`);
-      row.appendChild(label);
+    const cityRow = document.createElement("div");
+    cityRow.className = "pill-row wall-cities";
 
-      const pills = document.createElement("div");
-      pills.className = "pill-row";
+    const placeRow = document.createElement("div");
+    placeRow.className = "pill-row wall-places";
 
-      const credit = document.createElement("p");
-      credit.className = "wall-credit";
+    const credit = document.createElement("p");
+    credit.className = "wall-credit";
 
-      // Under the credit, and only for the surface actually on the wall. A
-      // sentence about each of them at once would be a wall of text about
-      // walls.
-      const about = document.createElement("p");
-      about.className = "wall-about";
+    const about = document.createElement("p");
+    about.className = "wall-about";
 
-      const buttons = new Map<string, HTMLButtonElement>();
+    /** Which city's places are listed. Not which wall is dressed. */
+    let openCity = cityOf(
+      this.walls.catalogue.find((one) => one.slug === this.walls.current),
+    );
 
-      const sync = () => {
-        const chosen = this.walls.current[side];
-        for (const [slug, button] of buttons) {
-          button.setAttribute("aria-pressed", String(slug === chosen));
-        }
-        const entry = this.walls.catalogue.find((one) => one.slug === chosen);
-        credit.textContent = entry ? creditLine(entry) : "";
-        about.textContent = entry?.description?.[getLocale()] ?? "";
-        about.hidden = about.textContent === "";
-      };
+    const cityButtons = new Map<string, HTMLButtonElement>();
 
-      for (const entry of this.walls.catalogue) {
+    const renderPlaces = () => {
+      placeRow.replaceChildren();
+      for (const entry of groups.get(openCity) ?? []) {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "pill";
         button.textContent = entry.title;
+        button.setAttribute(
+          "aria-pressed",
+          String(entry.slug === this.walls.current),
+        );
         button.addEventListener("click", () => {
-          if (this.walls.current[side] === entry.slug) return;
-          this.walls.current[side] = entry.slug;
+          if (this.walls.current === entry.slug) return;
+          this.walls.current = entry.slug;
           sync();
-          this.handlers.onWallSurface(side, entry.slug);
+          this.handlers.onWallSurface(entry.slug);
         });
-        buttons.set(entry.slug, button);
-        pills.appendChild(button);
+        placeRow.appendChild(button);
       }
+    };
 
-      row.appendChild(pills);
-      row.appendChild(credit);
-      row.appendChild(about);
-      host.appendChild(row);
-      sync();
+    const sync = () => {
+      for (const [name, button] of cityButtons) {
+        button.setAttribute("aria-pressed", String(name === openCity));
+      }
+      renderPlaces();
+
+      const entry = this.walls.catalogue.find(
+        (one) => one.slug === this.walls.current,
+      );
+      credit.textContent = entry ? creditLine(entry) : "";
+      about.textContent = entry?.description?.[getLocale()] ?? "";
+      about.hidden = about.textContent === "";
+    };
+
+    for (const name of groups.keys()) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "pill";
+      button.textContent = name === NO_CITY ? t("wall.city.default") : name;
+      button.addEventListener("click", () => {
+        // Opening a city lists its walls. It does not dress anything — that
+        // would make browsing destructive, and there is no undo for a wall.
+        if (openCity === name) return;
+        openCity = name;
+        sync();
+      });
+      cityButtons.set(name, button);
+      cityRow.appendChild(button);
     }
+
+    const cityLabel = document.createElement("p");
+    cityLabel.className = "wall-label";
+    cityLabel.dataset.i18n = "wall.city";
+    cityLabel.textContent = t("wall.city");
+
+    const placeLabel = document.createElement("p");
+    placeLabel.className = "wall-label";
+    placeLabel.dataset.i18n = "wall.place";
+    placeLabel.textContent = t("wall.place");
+
+    host.append(cityLabel, cityRow, placeLabel, placeRow, credit, about);
+    sync();
   }
 
   /**

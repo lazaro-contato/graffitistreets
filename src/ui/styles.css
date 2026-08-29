@@ -449,12 +449,7 @@ a.menu-item {
    see Menu.buildWallChoices. The credit under each row is not decoration:
    ASSETS.md is this project saying who owns what, and a wall somebody sent in
    is where that matters most. */
-.wall-side {
-  width: min(24rem, 100%);
-  margin-bottom: 0.55rem;
-}
-
-.wall-side-label {
+.wall-label {
   margin: 0 0 0.25rem;
   font-size: 0.72rem;
   letter-spacing: 0.14em;
@@ -462,8 +457,18 @@ a.menu-item {
   opacity: 0.62;
 }
 
-.wall-side .pill-row {
+.wall-cities,
+.wall-places {
   flex-wrap: wrap;
+  width: min(24rem, 100%);
+  margin-bottom: 0.55rem;
+}
+
+/* Places sit under the city that holds them, so they read as its contents
+   rather than as a second, unrelated list. */
+.wall-places {
+  padding-left: 0.7rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.16);
 }
 
 .wall-credit {
