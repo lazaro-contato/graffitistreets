@@ -145,6 +145,19 @@ export type SurfaceEntry = {
   slug: string;
   /** Shown in the picker. Not translated — it is a name, not copy. */
   title: string;
+  /**
+   * A sentence about the wall, in both languages.
+   *
+   * Both keys are required for the same reason src/i18n/strings.ts requires
+   * them: a surface that reads in one language and not the other is a surface
+   * half the players cannot be told anything about. Null is for a surface whose
+   * contributor had nothing to say, which is allowed and rare.
+   *
+   * Spelled out rather than keyed by Locale because this file imports nothing —
+   * it sits at the bottom of the graph, and LINKS.SUBMIT already carries the
+   * same pair the same way.
+   */
+  description: { pt: string; en: string } | null;
   /** Null for a surface that is not from anywhere in particular. */
   city: string | null;
   country: string | null;
@@ -172,6 +185,10 @@ export type SurfaceEntry = {
 export const BUILT_IN_SURFACE: SurfaceEntry = {
   slug: "concrete031",
   title: "Concrete 031",
+  description: {
+    pt: "Placas de concreto pré-moldado, 1,20 x 0,60 m — a medida padrão, que divide o muro sem cortar nenhuma placa ao meio.",
+    en: "Cast concrete plates at 1.20 x 0.60 m — the standard size, which divides the wall without cutting a plate in half.",
+  },
   city: null,
   country: null,
   author: "ambientCG",

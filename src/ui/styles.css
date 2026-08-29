@@ -473,6 +473,16 @@ a.menu-item {
   opacity: 0.42;
 }
 
+/* What the wall is, for the surface actually on it. Two lines at most — it is
+   a label, not a plaque. */
+.wall-about {
+  margin: 0.2rem 0 0;
+  max-width: 24rem;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  opacity: 0.58;
+}
+
 /* Mode cards: the play button, split in two. Picking one sets how you move
    and goes straight in, so these are actions, not a setting to toggle. */
 .mode-cards {

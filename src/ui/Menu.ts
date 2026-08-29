@@ -8,7 +8,7 @@ import {
   type SurfaceEntry,
 } from "../config";
 import { LOCALES, type Locale } from "../i18n/strings";
-import { t, getLocale, setLocale } from "../i18n/i18n";
+import { t, getLocale, setLocale, onLocaleChange } from "../i18n/i18n";
 
 export type MenuScreen =
   | "main"
@@ -141,6 +141,7 @@ export class Menu {
     this.buildBrushChoices();
     this.buildWallChoices();
     this.buildLanguageChoices();
+    onLocaleChange(() => this.refreshWalls());
     this.buildControls();
 
     this.root.addEventListener("click", (e) => {
@@ -245,6 +246,17 @@ export class Menu {
    * through the translation table. A surface contributed from São Paulo says
    * São Paulo in English too.
    */
+  /**
+   * Redraws the wall picker.
+   *
+   * The surface descriptions are data rather than copy, so the pass over
+   * data-i18n never reaches them — switching language has to rebuild the rows
+   * or the sentence stays in the language nobody just chose.
+   */
+  refreshWalls() {
+    this.buildWallChoices();
+  }
+
   private buildWallChoices() {
     const host = this.root.querySelector("#wall-choices")!;
     host.replaceChildren();
@@ -265,6 +277,12 @@ export class Menu {
       const credit = document.createElement("p");
       credit.className = "wall-credit";
 
+      // Under the credit, and only for the surface actually on the wall. A
+      // sentence about each of them at once would be a wall of text about
+      // walls.
+      const about = document.createElement("p");
+      about.className = "wall-about";
+
       const buttons = new Map<string, HTMLButtonElement>();
 
       const sync = () => {
@@ -274,6 +292,8 @@ export class Menu {
         }
         const entry = this.walls.catalogue.find((one) => one.slug === chosen);
         credit.textContent = entry ? creditLine(entry) : "";
+        about.textContent = entry?.description?.[getLocale()] ?? "";
+        about.hidden = about.textContent === "";
       };
 
       for (const entry of this.walls.catalogue) {
@@ -293,6 +313,7 @@ export class Menu {
 
       row.appendChild(pills);
       row.appendChild(credit);
+      row.appendChild(about);
       host.appendChild(row);
       sync();
     }
