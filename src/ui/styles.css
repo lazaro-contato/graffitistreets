@@ -445,6 +445,34 @@ a.menu-item {
   color: #0a0c10;
 }
 
+/* The wall picker. One row per side, because the two walls are independent —
+   see Menu.buildWallChoices. The credit under each row is not decoration:
+   ASSETS.md is this project saying who owns what, and a wall somebody sent in
+   is where that matters most. */
+.wall-side {
+  width: min(24rem, 100%);
+  margin-bottom: 0.55rem;
+}
+
+.wall-side-label {
+  margin: 0 0 0.25rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.62;
+}
+
+.wall-side .pill-row {
+  flex-wrap: wrap;
+}
+
+.wall-credit {
+  margin: 0.25rem 0 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  opacity: 0.42;
+}
+
 /* Mode cards: the play button, split in two. Picking one sets how you move
    and goes straight in, so these are actions, not a setting to toggle. */
 .mode-cards {

@@ -4,6 +4,7 @@ import { Input } from "./core/Input";
 import { buildStreet } from "./world/Street";
 import { WallSystem } from "./world/WallSystem";
 import {
+  loadWallSurface,
   loadWallSurfaces,
   loadRoadSurface,
   loadAdTextures,
@@ -33,7 +34,7 @@ import {
   getLocale,
   onLocaleChange,
 } from "./i18n/i18n";
-import { ADS, DEFAULT_SURFACE_SLUGS, LINKS } from "./config";
+import { ADS, DEFAULT_SURFACE_SLUGS, LINKS, type Side } from "./config";
 
 const canvas = document.getElementById("app") as HTMLCanvasElement;
 const hud = document.getElementById("hud")!;
@@ -63,10 +64,14 @@ loading.advance();
 // Awaited before the walls exist, because the photograph is tiled into each
 // panel canvas as its base coat — there is no adding it afterwards without
 // repainting every panel. The loading screen is already up, in the markup.
+// Which surface is on which side. The menu edits this in place as choices are
+// made, so reopening the settings shows what is actually on the walls.
+const dressing: Record<Side, string> = { ...DEFAULT_SURFACE_SLUGS };
+
 const surfaces = await loadWallSurfaces(
   {
-    left: specOf(entryFor(catalogue, DEFAULT_SURFACE_SLUGS.left)),
-    right: specOf(entryFor(catalogue, DEFAULT_SURFACE_SLUGS.right)),
+    left: specOf(entryFor(catalogue, dressing.left)),
+    right: specOf(entryFor(catalogue, dressing.right)),
   },
   () => loading.advance(),
 );
@@ -167,26 +172,50 @@ buildPhoto(engine, () => player.controls.isLocked);
 // lock, and every other state needs a real mouse cursor, so the two must never
 // drift apart — every transition goes through enterStreet or a menu.show.
 
-const menu = new Menu({
-  onPlay: () => {
-    player.setMode(menu.mode);
-    enterStreet();
+/**
+ * Puts a different photograph on one wall, keeping everything painted on it.
+ *
+ * Two steps, and the order is the whole trick: the panels take the new maps,
+ * then the store lays the base coat down again and replays that side's journal
+ * over it. Strokes are the source of truth, so nothing painted is lost by
+ * changing what the wall is made of.
+ *
+ * Failures are silent on purpose, in the same way a missing texture file is:
+ * loadWallSurface resolves to nulls rather than rejecting, which dresses the
+ * wall in procedural concrete instead of leaving the player looking at an
+ * error they cannot act on.
+ */
+async function redress(side: Side, slug: string) {
+  const surface = await loadWallSurface(specOf(entryFor(catalogue, slug)));
+  walls.dress(side, surface);
+  store.repaintSide(side);
+}
+
+const menu = new Menu(
+  {
+    onPlay: () => {
+      player.setMode(menu.mode);
+      enterStreet();
+    },
+    onWallSurface: (side, slug) => void redress(side, slug),
+    onBrushSizing: (sizing) => can.setSizing(sizing),
+    onResume: () => enterStreet(),
+    onWorkshop: () => {
+      // Reachable while the workshop is already open, since the pause screen
+      // can be raised over it. There it means "put me back", not "open it
+      // again".
+      if (workshop.isOpen) menu.hide();
+      else openWorkshop();
+    },
+    onQuit: () => {
+      // The pause screen can be raised over the workshop, and the main menu
+      // must not be left floating on top of it.
+      workshop.close();
+      menu.show("main");
+    },
   },
-  onBrushSizing: (sizing) => can.setSizing(sizing),
-  onResume: () => enterStreet(),
-  onWorkshop: () => {
-    // Reachable while the workshop is already open, since the pause screen can
-    // be raised over it. There it means "put me back", not "open it again".
-    if (workshop.isOpen) menu.hide();
-    else openWorkshop();
-  },
-  onQuit: () => {
-    // The pause screen can be raised over the workshop, and the main menu must
-    // not be left floating on top of it.
-    workshop.close();
-    menu.show("main");
-  },
-});
+  { catalogue, current: dressing },
+);
 
 const workshop = new Workshop(loadout, {
   onClose: () => closeWorkshop(),
