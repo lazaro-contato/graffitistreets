@@ -164,13 +164,40 @@ Most caps do not turn with the stroke, and that is the point of the flat ones:
 a calligraphy cap paints thick across its edge and thin along it, which only
 works from a fixed angle. The roller is the exception — see below.
 
+## Night, and day
+
+The street is night by default and can be switched to day from the settings.
+Both are one `SkySpec` in `config.ts` — sky colour, fog, hemisphere fill, the
+key light, a multiplier on the lamps and one on the paint's glow — and
+`buildStreet` returns a `Sky` that swaps between them.
+
+Every light is built once and re-aimed rather than rebuilt. A shadow map is an
+allocation, and changing the sky in the middle of a game must not cost a
+stutter. The lamps go `visible = false` rather than to zero intensity, because a
+spotlight at zero still pays for its shadow map every frame.
+
+Day is **overcast**, deliberately. A hard sun down a corridor this narrow throws
+one wall into a black slab and blows the other out, and neither is paintable. A
+high bright sky lights both faces evenly, which is also the light the wall
+photographs were made in.
+
+The moon and the sun are the same `DirectionalLight`. From the alley floor the
+difference between them is colour, angle and how hard they land.
+
+The paint's own emission belongs to the panels, which sit above `world/`, so
+`Sky` reports the scale through `glowsWith()` rather than reaching for them.
+
+---
+
 ## Neon paint glows
 
 Neon is not a brighter colour, it is a different material. Every panel carries
 a **second canvas** as the material's `emissiveMap`, and neon paint is written
 into it as well as onto the colour map — so it lights itself instead of waiting
-for a lamp. Every map is night with a lot of dark between two hard lamps, which
-is the one setting where this reads as anything at all.
+for a lamp. Night is a lot of dark between two hard lamps, which is the setting
+where this reads as anything at all — so `SkySpec.GLOW` scales the emission
+right down by day. Paint burning as bright at noon as at midnight is the
+fastest way to make a daylit street look fake.
 
 Four things this has to get right:
 
@@ -487,7 +514,7 @@ src/
     Random.ts               seeded PRNG, for reproducible surfaces
 
   world/
-    Street.ts               road, sidewalks, lights
+    Street.ts               road, sidewalks, lights, and the Sky that swaps them
     WallPanel.ts            mesh + canvas + CanvasTexture for one panel
     WallStrip.ts            one wall side as a continuous paint surface
     WallSystem.ts           both strips, raycast targets, dirty flush
