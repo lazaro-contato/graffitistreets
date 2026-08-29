@@ -425,6 +425,21 @@ rather than a code change. A missing or broken manifest falls back to one
 built-in entry, and a malformed line is dropped without taking the rest with
 it.
 
+A wall can also be dressed in a photograph the player drags onto it. That file
+is kept in IndexedDB and **never leaves the browser** — there is no upload here
+and no server to take one, which is what lets somebody put their own street on
+the wall with nothing to moderate and no copyright to clear. Which side it
+lands on comes from a raycast at the drop coordinates, so the gesture is
+"that wall", not a menu choice. It brings no normal or roughness map with it:
+those belong to whatever surface was there before, photographed at a different
+scale, and tiling that relief at the photo's tile size puts the lighting out of
+step with the picture.
+
+The tile size of a dropped photo is a slider rather than a guess. Only the
+person who stood in front of that wall knows how much of it the photograph
+covers, and a plain photo does not tile — `public/wall/README.md` has always
+said so, and a wall side is 60 m of strip.
+
 A side can be re-dressed while the game runs, from the settings. It is two
 steps and the order is the point: `WallSystem.dress()` swaps the material maps
 and the panel's tiling, then `StrokeStore.repaintSide()` lays the new base coat
@@ -538,6 +553,7 @@ src/
   state/
     types.ts                Stroke, StrokePoint, PaintMessage
     StrokeStore.ts          per-side journal, undo, repaint, serialize
+    WallPhotos.ts           dropped wall photographs, in IndexedDB
 
   net/
     Transport.ts            the interface
@@ -548,6 +564,7 @@ src/
     styles.css
     Hud.ts                  palette, color shortcuts, alt + wheel resize
     Menu.ts                 main, pause and controls screens
+    WallDrop.ts             an image dragged onto a wall, and which wall it hit
     workshop/
       Workshop.ts           the screen: composes the sectors, owns the keys
       CapRack.ts            cap cards, samples painted with the real brush
