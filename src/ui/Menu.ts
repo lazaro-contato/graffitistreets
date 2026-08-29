@@ -4,8 +4,11 @@ import {
   DEFAULT_BRUSH_SIZING,
   TIMES_OF_DAY,
   DEFAULT_TIME_OF_DAY,
+  WALL_PHOTO,
+  SIDES,
   type BrushSizing,
   type MovementMode,
+  type Side,
   type SurfaceEntry,
   type TimeOfDay,
 } from "../config";
@@ -58,6 +61,14 @@ export type WallDressing = {
    * has the same walls on both sides of it.
    */
   current: string;
+  /**
+   * The tile size of the photo on each wall, or null where there is none.
+   *
+   * A photo is not a place and never will be — it is one person's file on one
+   * person's machine, dropped on one wall rather than on a street. So it sits
+   * beside the slug as an override, not inside the catalogue as an entry.
+   */
+  photo: Record<Side, number | null>;
 };
 
 export type MenuHandlers = {
@@ -72,6 +83,10 @@ export type MenuHandlers = {
   onWallSurface: (slug: string) => void;
   /** Fires on every change, including the stored one restored at start-up. */
   onTimeOfDay: (time: TimeOfDay) => void;
+  /** The tile size of a dropped photo was dragged to a new value. */
+  onPhotoTile: (side: Side, tileMeters: number) => void;
+  /** Take the dropped photo off this wall and put the street back. */
+  onPhotoRemoved: (side: Side) => void;
   /** Fires on every change, including the stored one restored at start-up. */
   onBrushSizing: (sizing: BrushSizing) => void;
   onResume: () => void;
@@ -140,6 +155,17 @@ function groupByCity(
     else groups.set(key, [entry]);
   }
   return groups;
+}
+
+/**
+ * How wide one tile of a dropped photo is.
+ *
+ * It stands where a credit would, because a photo has none to give: it is the
+ * player's own file. The metre is the unit they would have measured that wall
+ * in, if they had.
+ */
+function tileSize(tileMeters: number): string {
+  return `${tileMeters.toFixed(1)} m`;
 }
 
 function creditLine(entry: SurfaceEntry): string {
@@ -378,6 +404,12 @@ export class Menu {
     const about = document.createElement("p");
     about.className = "wall-about";
 
+    // Photos live under the street, not among the places. A photo is an
+    // override on one wall — it is not somewhere you can go, so putting it in
+    // the same row as Rio and Stockholm would be a lie about what it is.
+    const photos = document.createElement("div");
+    photos.className = "wall-photos";
+
     /** Which city's places are listed. Not which wall is dressed. */
     let openCity = cityOf(
       this.walls.catalogue.find((one) => one.slug === this.walls.current),
@@ -397,7 +429,17 @@ export class Menu {
           String(entry.slug === this.walls.current),
         );
         button.addEventListener("click", () => {
-          if (this.walls.current === entry.slug) return;
+          const photographed = SIDES.some(
+            (side) => this.walls.photo[side] !== null,
+          );
+          if (!photographed && this.walls.current === entry.slug) return;
+          // Choosing a street dresses both walls, so it also takes off any
+          // photo covering one of them. A wall cannot show two things.
+          for (const side of SIDES) {
+            if (this.walls.photo[side] === null) continue;
+            this.walls.photo[side] = null;
+            this.handlers.onPhotoRemoved(side);
+          }
           this.walls.current = entry.slug;
           sync();
           this.handlers.onWallSurface(entry.slug);
@@ -406,11 +448,75 @@ export class Menu {
       }
     };
 
+    /**
+     * The photo overrides, one block per wall that carries one.
+     *
+     * Rebuilt rather than toggled: a photo arrives by being dropped out in the
+     * street, so this can go from nothing to two blocks between two openings of
+     * the settings, and there is no state worth keeping between them.
+     */
+    const renderPhotos = () => {
+      photos.replaceChildren();
+
+      for (const side of SIDES) {
+        const metres = this.walls.photo[side];
+        if (metres === null) continue;
+
+        const block = document.createElement("div");
+
+        const head = document.createElement("div");
+        head.className = "wall-photo-head";
+
+        const label = document.createElement("p");
+        label.className = "wall-label";
+        label.dataset.i18n = `wall.side.${side}`;
+        label.textContent = t(`wall.side.${side}`);
+
+        const size = document.createElement("span");
+        size.className = "wall-credit";
+
+        const drop = document.createElement("button");
+        drop.type = "button";
+        drop.className = "wall-photo-drop";
+        drop.dataset.i18n = "wall.photo.remove";
+        drop.textContent = t("wall.photo.remove");
+        drop.addEventListener("click", () => {
+          this.walls.photo[side] = null;
+          this.handlers.onPhotoRemoved(side);
+          sync();
+        });
+
+        head.append(label, drop);
+
+        const tile = document.createElement("input");
+        tile.type = "range";
+        tile.className = "wall-tile";
+        tile.min = String(WALL_PHOTO.MIN_TILE_METERS);
+        tile.max = String(WALL_PHOTO.MAX_TILE_METERS);
+        tile.step = "0.1";
+        tile.value = String(metres);
+        tile.setAttribute("aria-label", t("wall.photo.tile"));
+        size.textContent = tileSize(metres);
+        tile.addEventListener("input", () => {
+          const next = Number(tile.value);
+          this.walls.photo[side] = next;
+          size.textContent = tileSize(next);
+          this.handlers.onPhotoTile(side, next);
+        });
+
+        block.append(head, tile, size);
+        photos.appendChild(block);
+      }
+
+      photos.hidden = photos.childElementCount === 0;
+    };
+
     const sync = () => {
       for (const [name, button] of cityButtons) {
         button.setAttribute("aria-pressed", String(name === openCity));
       }
       renderPlaces();
+      renderPhotos();
 
       const entry = this.walls.catalogue.find(
         (one) => one.slug === this.walls.current,
@@ -446,7 +552,15 @@ export class Menu {
     placeLabel.dataset.i18n = "wall.place";
     placeLabel.textContent = t("wall.place");
 
-    host.append(cityLabel, cityRow, placeLabel, placeRow, credit, about);
+    host.append(
+      cityLabel,
+      cityRow,
+      placeLabel,
+      placeRow,
+      credit,
+      about,
+      photos,
+    );
     sync();
   }
 
