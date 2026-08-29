@@ -209,6 +209,29 @@ export class WallPanel {
     this.dirty = true;
   }
 
+  /**
+   * Swaps the photograph this panel is dressed in.
+   *
+   * The base coat is *not* repainted here. A panel canvas holds the paint as
+   * well as the wall under it, so redrawing the base on its own would wipe
+   * every stroke on it — the journal has to put them back, and only the store
+   * can do that. See WallSystem.dress.
+   *
+   * The old clones are disposed rather than dropped: they are GPU allocations,
+   * and swapping surfaces a few times in a session would otherwise leak a
+   * normal and a roughness map each time.
+   */
+  setSurface(surface: WallSurface) {
+    this.surface = surface;
+
+    const material = this.mesh.material as THREE.MeshStandardMaterial;
+    material.normalMap?.dispose();
+    material.roughnessMap?.dispose();
+    material.normalMap = this.tileMap(surface.normal);
+    material.roughnessMap = this.tileMap(surface.roughness);
+    material.needsUpdate = true;
+  }
+
   toDataURL() {
     return this.canvas.toDataURL("image/webp", 0.85);
   }

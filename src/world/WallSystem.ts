@@ -38,6 +38,22 @@ export class WallSystem {
   }
 
   /**
+   * Dresses one side in a different photograph.
+   *
+   * This leaves the wall showing its old base coat under the paint, and the
+   * caller has to follow it with a repaint from the journal — StrokeStore owns
+   * that, and state/ sits above world/, so it cannot be called from in here.
+   *
+   * Doing it in two steps is not a compromise. The strokes are the source of
+   * truth, so re-dressing a wall is exactly "change the base coat and replay":
+   * the paint survives a surface swap because it was never pixels to begin
+   * with.
+   */
+  dress(side: Side, surface: WallSurface) {
+    this.strip(side).setSurface(surface);
+  }
+
+  /**
    * Called once per frame, after all painting logic.
    *
    * `texture.needsUpdate = true` schedules a ~4 MB upload to the GPU. Setting
