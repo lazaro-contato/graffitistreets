@@ -49,4 +49,15 @@ export class WallStrip {
   paintBase() {
     for (const panel of this.panels) panel.paintBase();
   }
+
+  /**
+   * Dresses every panel of this strip in a new photograph.
+   *
+   * The paint on the wall is untouched by this, and stays wrong until somebody
+   * repaints from the journal — the base coat is under the strokes on the same
+   * canvas. WallSystem.dress is the one that knows to do both.
+   */
+  setSurface(surface: WallSurface) {
+    for (const panel of this.panels) panel.setSurface(surface);
+  }
 }

@@ -387,8 +387,23 @@ showing exactly when the spray would mark the wall.
 
 ## Wall surface
 
-`public/wall/` optionally holds `albedo.jpg`, `normal.jpg` and `roughness.jpg`.
-Any that are missing fall back to the procedural concrete, silently.
+`public/wall/<slug>/` optionally holds `albedo.jpg`, `normal.jpg` and
+`roughness.jpg`. Any that are missing fall back to the procedural concrete,
+silently.
+
+Which slugs exist is `public/wall/surfaces.json`, read at start-up. It carries
+the metadata a picker and `ASSETS.md` need — title, city, author, licence,
+source, `tileMeters` — so contributing a wall is a JSON entry and three files
+rather than a code change. A missing or broken manifest falls back to one
+built-in entry, and a malformed line is dropped without taking the rest with
+it.
+
+A side can be re-dressed while the game runs, from the settings. It is two
+steps and the order is the point: `WallSystem.dress()` swaps the material maps
+and the panel's tiling, then `StrokeStore.repaintSide()` lays the new base coat
+and replays that side's journal over it. Nothing painted is lost, because the
+paint was never pixels — see *Store strokes, not pixels*. `world/` cannot call
+the store itself, since `state/` sits above it, so `main.ts` does both.
 
 The albedo is **not** a material map. A panel's canvas is its colour texture,
 because paint is drawn onto it, so the photograph is tiled into that canvas as
@@ -476,6 +491,8 @@ src/
     WallPanel.ts            mesh + canvas + CanvasTexture for one panel
     WallStrip.ts            one wall side as a continuous paint surface
     WallSystem.ts           both strips, raycast targets, dirty flush
+    Surfaces.ts             loads the photographic dressing for walls and road
+    SurfaceCatalogue.ts     reads public/wall/surfaces.json
     Colliders.ts            corridor clamp
 
   player/

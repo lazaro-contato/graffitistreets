@@ -1,0 +1,15 @@
+{
+  "note": "One entry per folder under /wall. Adding a surface is an entry here and the files it names — no TypeScript. Every entry has to say where it came from and under what licence; see ASSETS.md.",
+  "surfaces": [
+    {
+      "slug": "concrete031",
+      "title": "Concrete 031",
+      "city": null,
+      "country": null,
+      "author": "ambientCG",
+      "licence": "CC0-1.0",
+      "sourceUrl": "https://ambientcg.com/view?id=Concrete031",
+      "tileMeters": 2.4
+    }
+  ]
+}

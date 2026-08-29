@@ -4,6 +4,8 @@ import {
   DEFAULT_BRUSH_SIZING,
   type BrushSizing,
   type MovementMode,
+  type Side,
+  type SurfaceEntry,
 } from "../config";
 import { LOCALES, type Locale } from "../i18n/strings";
 import { t, getLocale, setLocale } from "../i18n/i18n";
@@ -30,8 +32,23 @@ function storedBrushSizing(): BrushSizing {
 /** Screens reached from another one, which a Back has to return from. */
 const SUB_SCREENS = new Set<MenuScreen>(["modes", "settings", "controls"]);
 
+/** What the wall picker needs to draw itself: the list, and what is on now. */
+export type WallDressing = {
+  catalogue: readonly SurfaceEntry[];
+  /** Mutated by the menu as choices are made, so it survives a reopen. */
+  current: Record<Side, string>;
+};
+
 export type MenuHandlers = {
   onPlay: () => void;
+  /**
+   * A wall was dressed in a different surface.
+   *
+   * The menu only reports the choice. Fetching the files and replaying the
+   * journal onto the new base coat is the caller's, in main.ts, because both
+   * the wall system and the stroke store live below this.
+   */
+  onWallSurface: (side: Side, slug: string) => void;
   /** Fires on every change, including the stored one restored at start-up. */
   onBrushSizing: (sizing: BrushSizing) => void;
   onResume: () => void;
@@ -64,6 +81,18 @@ const CONTROLS: { title: string; rows: string[] }[] = [
 export const MENU_ART = "/menu-bg.jpg";
 
 /**
+ * Who a surface belongs to, on one line under its row.
+ *
+ * It is shown rather than tucked into a tooltip because ASSETS.md makes a point
+ * of this project saying who owns what, and a wall somebody sent in is exactly
+ * the case where that matters most.
+ */
+function creditLine(entry: SurfaceEntry): string {
+  const place = [entry.city, entry.country].filter(Boolean).join(", ");
+  return [place, entry.author, entry.licence].filter(Boolean).join(" · ");
+}
+
+/**
  * The menu: the main screen, the pause screen, and the controls sheet shared
  * by both.
  *
@@ -87,7 +116,10 @@ export class Menu {
   /** Restored from the last visit: a preference, not a per-session choice. */
   brushSizing: BrushSizing = storedBrushSizing();
 
-  constructor(private handlers: MenuHandlers) {
+  constructor(
+    private handlers: MenuHandlers,
+    private walls: WallDressing,
+  ) {
     this.root = document.getElementById("menu")!;
 
     for (const screen of [
@@ -107,6 +139,7 @@ export class Menu {
 
     this.buildModeChoices();
     this.buildBrushChoices();
+    this.buildWallChoices();
     this.buildLanguageChoices();
     this.buildControls();
 
@@ -199,6 +232,70 @@ export class Menu {
     }
 
     choose(this.brushSizing);
+  }
+
+  /**
+   * The wall picker: which surface dresses each side of the street.
+   *
+   * One row per side rather than one choice for both, because the two walls
+   * were always independent — a photographed wall facing a bare one is a
+   * legitimate thing to want, and forcing them to match would take that away.
+   *
+   * Titles, cities and author names are data, not copy, so none of it goes
+   * through the translation table. A surface contributed from São Paulo says
+   * São Paulo in English too.
+   */
+  private buildWallChoices() {
+    const host = this.root.querySelector("#wall-choices")!;
+    host.replaceChildren();
+
+    for (const side of ["left", "right"] as const) {
+      const row = document.createElement("div");
+      row.className = "wall-side";
+
+      const label = document.createElement("p");
+      label.className = "wall-side-label";
+      label.dataset.i18n = `wall.side.${side}`;
+      label.textContent = t(`wall.side.${side}`);
+      row.appendChild(label);
+
+      const pills = document.createElement("div");
+      pills.className = "pill-row";
+
+      const credit = document.createElement("p");
+      credit.className = "wall-credit";
+
+      const buttons = new Map<string, HTMLButtonElement>();
+
+      const sync = () => {
+        const chosen = this.walls.current[side];
+        for (const [slug, button] of buttons) {
+          button.setAttribute("aria-pressed", String(slug === chosen));
+        }
+        const entry = this.walls.catalogue.find((one) => one.slug === chosen);
+        credit.textContent = entry ? creditLine(entry) : "";
+      };
+
+      for (const entry of this.walls.catalogue) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "pill";
+        button.textContent = entry.title;
+        button.addEventListener("click", () => {
+          if (this.walls.current[side] === entry.slug) return;
+          this.walls.current[side] = entry.slug;
+          sync();
+          this.handlers.onWallSurface(side, entry.slug);
+        });
+        buttons.set(entry.slug, button);
+        pills.appendChild(button);
+      }
+
+      row.appendChild(pills);
+      row.appendChild(credit);
+      host.appendChild(row);
+      sync();
+    }
   }
 
   /**

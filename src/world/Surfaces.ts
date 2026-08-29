@@ -1,10 +1,5 @@
 import * as THREE from "three";
-import {
-  SURFACES,
-  ROAD_SURFACE,
-  type Side,
-  type SurfaceSpec,
-} from "../config";
+import { ROAD_SURFACE, type Side, type SurfaceSpec } from "../config";
 import type { Locale } from "../i18n/strings";
 
 /**
@@ -79,15 +74,30 @@ async function loadOne(
 }
 
 /**
+ * Loads one wall's three files. Exported because a side can be re-dressed on
+ * its own, long after the world was built.
+ */
+export function loadWallSurface(
+  spec: SurfaceSpec,
+  onEach: () => void = () => {},
+): Promise<WallSurface> {
+  return loadOne(spec, onEach);
+}
+
+/**
  * Loads both walls. `onEach` fires per file, settled or not, so a loading bar
  * can count them — six in total, three a side.
+ *
+ * Which spec dresses which side is the caller's decision now: it comes from the
+ * manifest, and nothing down here should have to know that a catalogue exists.
  */
 export async function loadWallSurfaces(
+  specs: Record<Side, SurfaceSpec>,
   onEach: () => void = () => {},
 ): Promise<Record<Side, WallSurface>> {
   const [left, right] = await Promise.all([
-    loadOne(SURFACES.left, onEach),
-    loadOne(SURFACES.right, onEach),
+    loadOne(specs.left, onEach),
+    loadOne(specs.right, onEach),
   ]);
   return { left, right };
 }
