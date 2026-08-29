@@ -44,6 +44,37 @@ the site carries the same dedication.
 Attribution is not required and is given anyway: ambientCG is the reason this
 alley has a surface instead of a flat colour.
 
+## City wall surfaces
+
+`public/wall/` also holds fourteen wall surfaces contributed by **Jackson
+Mafra** (jackson.mafra@umain.com), released under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/): free to use and to
+build on, including commercially, as long as the credit above travels with
+them. The manifest carries that credit per surface, and the picker shows it on
+screen.
+
+They were **generated with AI image tools**, like the artwork above, and then
+resized and colour-corrected for this project. That matters for what they are:
+each one is a plausible wall *from* a place, not a photograph *of* one. Every
+entry has `sourceUrl: null`, and that is the honest value rather than a missing
+one.
+
+| City | Surfaces |
+| --- | --- |
+| Stockholm, Sweden | `stockholm-gamla-stan`, `stockholm-sodermalm`, `stockholm-snosatra` |
+| São Paulo, Brazil | `sao-paulo-beco-do-batman`, `sao-paulo-minhocao`, `sao-paulo-estacao-da-luz` |
+| Rio de Janeiro, Brazil | `rio-arcos-da-lapa`, `rio-lapa-azulejo`, `rio-santa-teresa` |
+| Porto Alegre, Brazil | `porto-alegre-gasometro`, `porto-alegre-viaduto-otavio-rocha` |
+| Itajaí, Brazil | `itajai-porto`, `itajai-centro-historico`, `itajai-cabecudas` |
+
+None of them reproduces anybody else's work, and that was a constraint on the
+way in rather than a check on the way out. The two walls that would obviously
+carry graffiti — Snösätra and the Beco do Batman — hold roller and spray layers
+with no legible letters or figures, because a texture of somebody's piece is a
+derivative of their piece. The Rio tilework is the neighbourhood's own broken
+tile vernacular and deliberately **not** the Escadaria Selarón, which is a
+signed work by a named artist.
+
 ## Fonts
 
 **Aldrich**, loaded from Google Fonts at runtime rather than bundled. It is
