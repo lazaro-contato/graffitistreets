@@ -8,6 +8,7 @@ import {
   loadRoadSurface,
   loadAdTextures,
 } from "./world/Surfaces";
+import { loadCatalogue, entryFor, specOf } from "./world/SurfaceCatalogue";
 import { buildBillboards } from "./world/Billboard";
 import { Player } from "./player/Player";
 import { SprayCan } from "./paint/SprayCan";
@@ -32,14 +33,15 @@ import {
   getLocale,
   onLocaleChange,
 } from "./i18n/i18n";
-import { ADS, LINKS } from "./config";
+import { ADS, DEFAULT_SURFACE_SLUGS, LINKS } from "./config";
 
 const canvas = document.getElementById("app") as HTMLCanvasElement;
 const hud = document.getElementById("hud")!;
 // Counted rather than estimated, so the bar tells the truth — including when
 // the ad panels are switched off and there are two fewer files to wait for.
 const loading = new LoadingScreen(
-  6 + // wall textures, three a side
+  1 + // the surface manifest
+    6 + // wall textures, three a side
     3 + // road textures
     (ADS.ENABLED ? 2 : 0) + // ad artwork, one per language
     1 + // building the world
@@ -53,10 +55,21 @@ const input = new Input(canvas);
 
 buildStreet(engine.scene, await loadRoadSurface(() => loading.advance()));
 
+// What this deployment has to dress a wall with. Read before the walls exist,
+// because the choice of surface decides which files are fetched next.
+const catalogue = await loadCatalogue();
+loading.advance();
+
 // Awaited before the walls exist, because the photograph is tiled into each
 // panel canvas as its base coat — there is no adding it afterwards without
 // repainting every panel. The loading screen is already up, in the markup.
-const surfaces = await loadWallSurfaces(() => loading.advance());
+const surfaces = await loadWallSurfaces(
+  {
+    left: specOf(entryFor(catalogue, DEFAULT_SURFACE_SLUGS.left)),
+    right: specOf(entryFor(catalogue, DEFAULT_SURFACE_SLUGS.right)),
+  },
+  () => loading.advance(),
+);
 await loading.breathe();
 
 // Building the panels blocks the main thread, so let the bar paint first.

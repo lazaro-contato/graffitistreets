@@ -131,26 +131,6 @@ export type SurfaceSpec = {
 };
 
 /**
- * Textures live under their own name, and each side points at one.
- *
- * This one is cast panels: two plates across the tile and four up it. At 2.4 m
- * that makes each plate 1.20 x 0.60 m, the standard cladding size — and it
- * divides the wall exactly, five rows up the 3 m and ten along the 12 m, so
- * the joints never land half way through a plate.
- */
-const CONCRETE_031: SurfaceSpec = {
-  albedo: "/wall/concrete031/albedo.jpg",
-  normal: "/wall/concrete031/normal.jpg",
-  roughness: "/wall/concrete031/roughness.jpg",
-  tileMeters: 2.4,
-};
-
-export const SURFACES: Record<Side, SurfaceSpec> = {
-  left: CONCRETE_031,
-  right: CONCRETE_031,
-};
-
-/**
  * A surface as the manifest describes it: a folder name and who it belongs to.
  *
  * The file paths are not in here on purpose. They are `/wall/<slug>/albedo.jpg`
@@ -182,6 +162,12 @@ export type SurfaceEntry = {
  * A fork with no manifest — or a manifest that fails to parse — still gets a
  * dressed wall rather than an empty picker, which is the same bargain the
  * missing-file fallback makes everywhere else here.
+ */
+/**
+ * Cast panels: two plates across the tile and four up it. At 2.4 m that makes
+ * each plate 1.20 x 0.60 m, the standard cladding size — and it divides the
+ * wall exactly, five rows up the 3 m and ten along the 12 m, so the joints
+ * never land half way through a plate.
  */
 export const BUILT_IN_SURFACE: SurfaceEntry = {
   slug: "concrete031",
