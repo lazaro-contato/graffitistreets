@@ -1,15 +1,215 @@
 {
-  "note": "One entry per folder under /wall. Adding a surface is an entry here and the files it names — no TypeScript. Every entry has to say where it came from and under what licence; see ASSETS.md.",
+  "note": "One entry per folder under /wall. Adding a surface is an entry here and the files it names — no TypeScript. Every entry has to say where it came from and under what licence; see ASSETS.md. tileMeters is how much real wall one tile covers, and it is the one field to tune by eye in the picker.",
   "surfaces": [
     {
       "slug": "concrete031",
       "title": "Concrete 031",
+      "description": {
+        "pt": "Placas de concreto pré-moldado, 1,20 x 0,60 m — a medida padrão, que divide o muro sem cortar nenhuma placa ao meio.",
+        "en": "Cast concrete plates at 1.20 x 0.60 m — the standard size, which divides the wall without cutting a plate in half."
+      },
       "city": null,
       "country": null,
       "author": "ambientCG",
       "licence": "CC0-1.0",
       "sourceUrl": "https://ambientcg.com/view?id=Concrete031",
       "tileMeters": 2.4
+    },
+    {
+      "slug": "stockholm-gamla-stan",
+      "title": "Gamla Stan Ochre",
+      "description": {
+        "pt": "Reboco de cal do século XVII no ocre que a cidade velha é obrigada a manter. A florada branca perto da base é sal subindo pela parede.",
+        "en": "Seventeenth-century lime plaster in the ochre the old town is required to keep. The white bloom near the base is salt rising through the wall."
+      },
+      "city": "Stockholm",
+      "country": "Sweden",
+      "author": "Jackson Mafra",
+      "licence": "CC-BY-4.0",
+      "sourceUrl": null,
+      "tileMeters": 3.0
+    },
+    {
+      "slug": "stockholm-sodermalm",
+      "title": "Södermalm Brick",
+      "description": {
+        "pt": "Tijolo prensado dos anos 1920 dos quarteirões industriais da ilha, escurecido por um século de fuligem. Dezenove fiadas por bloco, na medida real.",
+        "en": "1920s machine-made brick from the island's industrial blocks, darkened by a century of soot. Nineteen courses to a tile, at true size."
+      },
+      "city": "Stockholm",
+      "country": "Sweden",
+      "author": "Jackson Mafra",
+      "licence": "CC-BY-4.0",
+      "sourceUrl": null,
+      "tileMeters": 1.6
+    },
+    {
+      "slug": "stockholm-snosatra",
+      "title": "Snösätra Buff",
+      "description": {
+        "pt": "Painel do maior muro legal da Suécia, repintado tantas vezes que a tinta virou geologia. Só camadas de rolo — nenhuma peça de ninguém.",
+        "en": "A panel from Sweden's largest legal wall, repainted so many times the paint became its own geology. Roller layers only — nobody's piece."
+      },
+      "city": "Stockholm",
+      "country": "Sweden",
+      "author": "Jackson Mafra",
+      "licence": "CC-BY-4.0",
+      "sourceUrl": null,
+      "tileMeters": 2.4
+    },
+    {
+      "slug": "sao-paulo-beco-do-batman",
+      "title": "Beco do Batman Layers",
+      "description": {
+        "pt": "Reboco do beco onde uma peça dura semanas: magenta sob turquesa sob creme, cada camada descascando e revelando a anterior.",
+        "en": "Render from the alley where a piece lasts weeks: magenta under teal under cream, each layer flaking to show the one before."
+      },
+      "city": "São Paulo",
+      "country": "Brazil",
+      "author": "Jackson Mafra",
+      "licence": "CC-BY-4.0",
+      "sourceUrl": null,
+      "tileMeters": 3.0
+    },
+    {
+      "slug": "sao-paulo-minhocao",
+      "title": "Minhocão Concrete",
+      "description": {
+        "pt": "Concreto moldado in loco do elevado, com a marca das tábuas da fôrma e os furos dos tirantes. As listras escuras são cinquenta anos de chuva descendo sempre pela mesma linha.",
+        "en": "Board-formed structural concrete from the elevated highway, timber grain and form-tie holes intact. The dark streaks are fifty years of rain running the same lines."
+      },
+      "city": "São Paulo",
+      "country": "Brazil",
+      "author": "Jackson Mafra",
+      "licence": "CC-BY-4.0",
+      "sourceUrl": null,
+      "tileMeters": 3.0
+    },
+    {
+      "slug": "sao-paulo-estacao-da-luz",
+      "title": "Estação da Luz Brick",
+      "description": {
+        "pt": "Tijolo vitoriano trazido da Inglaterra para a estação, assentado em amarração inglesa — fiadas alternadas de topo e comprido, que ninguém mais usa na cidade.",
+        "en": "Victorian brick shipped from England for the station, laid in English bond — alternating header and stretcher courses, a bond nobody in the city uses any more."
+      },
+      "city": "São Paulo",
+      "country": "Brazil",
+      "author": "Jackson Mafra",
+      "licence": "CC-BY-4.0",
+      "sourceUrl": null,
+      "tileMeters": 1.3
+    },
+    {
+      "slug": "rio-arcos-da-lapa",
+      "title": "Arcos da Lapa Whitewash",
+      "description": {
+        "pt": "Caiação colonial sobre pedra, aplicada a trincha grossa o bastante para virar textura sozinha. Limpa em cima, comida pela umidade embaixo — por isso um bloco cobre o muro inteiro.",
+        "en": "Colonial whitewash over stone, brushed thick enough to read as texture on its own. Clean at the top, eaten by damp at the base — which is why one tile covers the whole wall."
+      },
+      "city": "Rio de Janeiro",
+      "country": "Brazil",
+      "author": "Jackson Mafra",
+      "licence": "CC-BY-4.0",
+      "sourceUrl": null,
+      "tileMeters": 3.0
+    },
+    {
+      "slug": "rio-lapa-azulejo",
+      "title": "Lapa Tilework",
+      "description": {
+        "pt": "Caco de azulejo assentado em rejunte, o vernáculo do bairro. Deliberadamente não é a Escadaria Selarón: aquilo é obra assinada, e copiar a composição seria obra derivada.",
+        "en": "Broken tile set in grout, the vernacular of the neighbourhood. Deliberately not the Escadaria Selarón: that is a signed work, and copying its composition would be a derivative."
+      },
+      "city": "Rio de Janeiro",
+      "country": "Brazil",
+      "author": "Jackson Mafra",
+      "licence": "CC-BY-4.0",
+      "sourceUrl": null,
+      "tileMeters": 1.2
+    },
+    {
+      "slug": "rio-santa-teresa",
+      "title": "Santa Teresa Peel",
+      "description": {
+        "pt": "Massa pastel sobre tijolo, aberta pela umidade tropical até três donos aparecerem de uma vez. O mofo preto nas bordas é o que separa isso de uma parede em Lisboa.",
+        "en": "Pastel plaster over brick, opened by tropical damp until three owners show at once. The black mould along the edges is what separates this from a wall in Lisbon."
+      },
+      "city": "Rio de Janeiro",
+      "country": "Brazil",
+      "author": "Jackson Mafra",
+      "licence": "CC-BY-4.0",
+      "sourceUrl": null,
+      "tileMeters": 2.0
+    },
+    {
+      "slug": "porto-alegre-gasometro",
+      "title": "Gasômetro Brick",
+      "description": {
+        "pt": "Tijolo da usina termelétrica dos anos 1920, com restos de caiação branca ainda presos nas juntas e fuligem acumulada em cima.",
+        "en": "Brick from the 1920s power station, old white lime wash still clinging in the joints and soot gathered toward the top."
+      },
+      "city": "Porto Alegre",
+      "country": "Brazil",
+      "author": "Jackson Mafra",
+      "licence": "CC-BY-4.0",
+      "sourceUrl": null,
+      "tileMeters": 1.9
+    },
+    {
+      "slug": "porto-alegre-viaduto-otavio-rocha",
+      "title": "Otávio Rocha Deco",
+      "description": {
+        "pt": "Concreto moldado com as estrias art déco do viaduto. O limo cinza-esverdeado fica nas reentrâncias, que é onde a água para; as faces salientes ficam lavadas.",
+        "en": "Cast concrete with the viaduct's art deco fluting. The grey-green algae sits in the recesses, where water stops; the raised faces stay washed."
+      },
+      "city": "Porto Alegre",
+      "country": "Brazil",
+      "author": "Jackson Mafra",
+      "licence": "CC-BY-4.0",
+      "sourceUrl": null,
+      "tileMeters": 3.0
+    },
+    {
+      "slug": "itajai-porto",
+      "title": "Porto de Itajaí Quay",
+      "description": {
+        "pt": "Muro de cais de porto de contêiner: tinta industrial gasta até o concreto, marcas de cabo, e uma faixa de maré que nunca seca de todo.",
+        "en": "Quay wall at a container port: industrial paint worn back to concrete, rope marks, and a tide band that never fully dries."
+      },
+      "city": "Itajaí",
+      "country": "Brazil",
+      "author": "Jackson Mafra",
+      "licence": "CC-BY-4.0",
+      "sourceUrl": null,
+      "tileMeters": 3.0
+    },
+    {
+      "slug": "itajai-centro-historico",
+      "title": "Centro Histórico Pastel",
+      "description": {
+        "pt": "Reboco de cal pintado num azul pastel que cem quilômetros de ar salgado já levaram quase todo. Fosco, nunca brilhante — maresia mata o brilho antes da cor.",
+        "en": "Lime plaster in a pastel blue that a hundred kilometres of sea air has taken most of the way out. Chalky, never glossy — salt air kills sheen before it kills colour."
+      },
+      "city": "Itajaí",
+      "country": "Brazil",
+      "author": "Jackson Mafra",
+      "licence": "CC-BY-4.0",
+      "sourceUrl": null,
+      "tileMeters": 3.0
+    },
+    {
+      "slug": "itajai-cabecudas",
+      "title": "Cabeçudas Salt Render",
+      "description": {
+        "pt": "Reboco de frente de praia comido pelo sal até a brita aparecer. O branco cristalino nas covas é o próprio sal, e é assim que acaba todo muro a um quarteirão daquela praia.",
+        "en": "Seafront render eaten by salt until the aggregate stands proud. The crystalline white in the pits is the salt itself, and it is how every wall within a block of that beach ends up."
+      },
+      "city": "Itajaí",
+      "country": "Brazil",
+      "author": "Jackson Mafra",
+      "licence": "CC-BY-4.0",
+      "sourceUrl": null,
+      "tileMeters": 3.0
     }
   ]
 }
