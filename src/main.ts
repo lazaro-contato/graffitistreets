@@ -37,7 +37,7 @@ import {
   onLocaleChange,
 } from "./i18n/i18n";
 import { WallDrop } from "./ui/WallDrop";
-import { savePhoto } from "./state/WallPhotos";
+import { loadPhotos, savePhoto } from "./state/WallPhotos";
 import {
   ADS,
   DEFAULT_SURFACE_SLUG,
@@ -53,6 +53,7 @@ const hud = document.getElementById("hud")!;
 // the ad panels are switched off and there are two fewer files to wait for.
 const loading = new LoadingScreen(
   1 + // the surface manifest
+    1 + // any wall photo kept from last time
     6 + // wall textures, three a side
     3 + // road textures
     (ADS.ENABLED ? 2 : 0) + // ad artwork, one per language
@@ -89,6 +90,16 @@ const surfaces = await loadWallSurfaces(
   },
   () => loading.advance(),
 );
+
+// A photograph the player dropped in on an earlier visit wins over the surface
+// the manifest chose, and has to be in place before the panels are built: the
+// base coat is tiled into each canvas at construction, and there is no adding
+// it afterwards without repainting the wall.
+for (const [side, photo] of Object.entries(await loadPhotos())) {
+  const image = await imageFromBlob(photo.blob);
+  if (image) surfaces[side as Side] = photoSurface(image, photo.tileMeters);
+}
+loading.advance();
 await loading.breathe();
 
 // Building the panels blocks the main thread, so let the bar paint first.
