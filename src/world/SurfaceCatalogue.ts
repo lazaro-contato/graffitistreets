@@ -50,10 +50,19 @@ function isUsable(value: unknown): value is SurfaceEntry {
   );
 }
 
+/** A description only counts if it carries both languages. */
+function readDescription(value: unknown): SurfaceEntry["description"] {
+  if (typeof value !== "object" || value === null) return null;
+  const pair = value as Record<string, unknown>;
+  if (typeof pair.pt !== "string" || typeof pair.en !== "string") return null;
+  return { pt: pair.pt, en: pair.en };
+}
+
 function normalise(value: SurfaceEntry): SurfaceEntry {
   return {
     slug: value.slug,
     title: value.title,
+    description: readDescription(value.description),
     city: typeof value.city === "string" ? value.city : null,
     country: typeof value.country === "string" ? value.country : null,
     author: value.author,

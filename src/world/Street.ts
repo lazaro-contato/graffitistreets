@@ -1,11 +1,14 @@
 import * as THREE from "three";
 import {
   WORLD,
-  NIGHT,
+  SKIES,
+  DEFAULT_TIME_OF_DAY,
   LAMP,
   ROAD_OFFSET_U,
   WALL_X,
   HALF_LENGTH,
+  type SkySpec,
+  type TimeOfDay,
 } from "../config";
 import { BARE_ROAD, type RoadSurface } from "./Surfaces";
 
@@ -142,6 +145,15 @@ function buildEnclosure(scene: THREE.Scene) {
   }
 }
 
+/** How hard the lamp head itself emits at night, before the sky scales it. */
+const HEAD_EMISSION = 2.4;
+
+/** The parts of a lamp that the time of day turns up or down. */
+type Lamp = {
+  light: THREE.SpotLight;
+  head: THREE.MeshStandardMaterial;
+};
+
 /**
  * A lamp on a bracket, on one corner of the alley.
  *
@@ -157,7 +169,7 @@ function buildStreetLamp(
   side: -1 | 1,
   end: -1 | 1,
   shadowSize: number,
-) {
+): Lamp {
   const poleX = side * (WALL_X - LAMP.WALL_GAP);
   const poleZ = end * (HALF_LENGTH - LAMP.END_INSET);
   const headX = poleX - side * LAMP.ARM_REACH;
@@ -179,13 +191,14 @@ function buildStreetLamp(
   scene.add(arm);
 
   // Emissive rather than lit, so it reads as the source.
+  const headMaterial = new THREE.MeshStandardMaterial({
+    color: "#1a1a1e",
+    emissive: new THREE.Color(LAMP.COLOR),
+    emissiveIntensity: HEAD_EMISSION,
+  });
   const head = new THREE.Mesh(
     new THREE.BoxGeometry(0.34, 0.12, 0.22),
-    new THREE.MeshStandardMaterial({
-      color: "#1a1a1e",
-      emissive: new THREE.Color(LAMP.COLOR),
-      emissiveIntensity: 2.4,
-    }),
+    headMaterial,
   );
   head.position.set(headX, LAMP.HEIGHT - 0.18, poleZ);
   scene.add(head);
@@ -209,16 +222,80 @@ function buildStreetLamp(
   }
   scene.add(light);
   scene.add(light.target);
+
+  return { light, head: headMaterial };
 }
 
 /** Builds the static scenery: road, kerbs, the enclosure, and the night. */
+/**
+ * The lights of the street, and the one switch that moves all of them together.
+ *
+ * Every light is built once and re-aimed rather than rebuilt, because a shadow
+ * map is an allocation and swapping the sky must not cost a stutter mid-game.
+ * `onGlow` is how the walls hear about it: the paint's own emission belongs to
+ * the panels, which live above this file, so it is reported rather than reached
+ * for.
+ */
+export class Sky {
+  current: TimeOfDay = DEFAULT_TIME_OF_DAY;
+
+  private onGlow: (scale: number) => void = () => {};
+
+  constructor(
+    private scene: THREE.Scene,
+    private fill: THREE.HemisphereLight,
+    private key: THREE.DirectionalLight,
+    private lamps: Lamp[],
+  ) {}
+
+  /** Told what to do with the paint's own light, which is not this file's. */
+  glowsWith(onGlow: (scale: number) => void) {
+    this.onGlow = onGlow;
+    this.apply(SKIES[this.current]);
+  }
+
+  set(time: TimeOfDay) {
+    this.current = time;
+    this.apply(SKIES[time]);
+  }
+
+  private apply(sky: SkySpec) {
+    (this.scene.background as THREE.Color).set(sky.SKY);
+    const fog = this.scene.fog as THREE.Fog;
+    fog.color.set(sky.SKY);
+    fog.near = sky.FOG_NEAR;
+    fog.far = sky.FOG_FAR;
+
+    this.fill.color.set(sky.FILL_SKY);
+    this.fill.groundColor.set(sky.FILL_GROUND);
+    this.fill.intensity = sky.FILL_INTENSITY;
+
+    this.key.color.set(sky.KEY_COLOR);
+    this.key.intensity = sky.KEY_INTENSITY;
+    this.key.position.set(...sky.KEY_POSITION);
+
+    for (const lamp of this.lamps) {
+      lamp.light.intensity = LAMP.INTENSITY * sky.LAMPS;
+      // Off, not dim: a spotlight at zero still pays for its shadow map every
+      // frame, and there is nothing for it to light at noon.
+      lamp.light.visible = sky.LAMPS > 0;
+      lamp.head.emissiveIntensity = HEAD_EMISSION * sky.GLOW;
+    }
+
+    this.onGlow(sky.GLOW);
+  }
+}
+
+/** Builds the static scenery: road, kerbs, the enclosure, and the sky. */
 export function buildStreet(
   scene: THREE.Scene,
   road: RoadSurface = BARE_ROAD,
-) {
-  scene.background = new THREE.Color(NIGHT.SKY);
+): Sky {
+  const sky = SKIES[DEFAULT_TIME_OF_DAY];
+
+  scene.background = new THREE.Color(sky.SKY);
   // Tuned to the arena. The old 30-90 never fired in a world this size.
-  scene.fog = new THREE.Fog(NIGHT.SKY, NIGHT.FOG_NEAR, NIGHT.FOG_FAR);
+  scene.fog = new THREE.Fog(sky.SKY, sky.FOG_NEAR, sky.FOG_FAR);
 
   buildGround(scene, road);
   buildEnclosure(scene);
@@ -226,23 +303,25 @@ export function buildStreet(
   // Diagonally opposite, so between them they reach both ends of both walls.
   // The second shadow map is quarter size: it is there for the direction it
   // implies, not for the detail.
-  buildStreetLamp(scene, -1, -1, 2048);
-  buildStreetLamp(scene, 1, 1, 1024);
+  const lamps = [
+    buildStreetLamp(scene, -1, -1, 2048),
+    buildStreetLamp(scene, 1, 1, 1024),
+  ];
 
   // Enough sky bounce that walls outside a cone are dark rather than black.
-  scene.add(
-    new THREE.HemisphereLight(
-      NIGHT.FILL_SKY,
-      NIGHT.FILL_GROUND,
-      NIGHT.FILL_INTENSITY,
-    ),
+  const fill = new THREE.HemisphereLight(
+    sky.FILL_SKY,
+    sky.FILL_GROUND,
+    sky.FILL_INTENSITY,
   );
+  scene.add(fill);
 
-  // Cool moonlight for shape. No shadows on it — the lamp casts the only ones.
-  const moon = new THREE.DirectionalLight(
-    NIGHT.MOON_COLOR,
-    NIGHT.MOON_INTENSITY,
-  );
-  moon.position.set(-8, 14, -6);
-  scene.add(moon);
+  // The moon at night, the sun by day. No shadows on it either way — the lamps
+  // cast the only ones, and a second shadow map down a corridor this size buys
+  // nothing but the frame it costs.
+  const key = new THREE.DirectionalLight(sky.KEY_COLOR, sky.KEY_INTENSITY);
+  key.position.set(...sky.KEY_POSITION);
+  scene.add(key);
+
+  return new Sky(scene, fill, key, lamps);
 }

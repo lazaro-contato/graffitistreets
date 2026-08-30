@@ -22,6 +22,10 @@ rebuild of anything but the static site.
 {
   "slug": "concrete031",
   "title": "Concrete 031",
+  "description": {
+    "pt": "Placas de concreto pré-moldado, 1,20 x 0,60 m.",
+    "en": "Cast concrete plates at 1.20 x 0.60 m."
+  },
   "city": null,
   "country": null,
   "author": "ambientCG",
@@ -35,6 +39,7 @@ rebuild of anything but the static site.
 | --- | --- |
 | `slug` | The folder name, and a URL path segment. Lowercase, digits and hyphens |
 | `title` | What the picker shows. A name, not copy — it is never translated |
+| `description` | One sentence about the wall, in both languages, or `null`. Both keys or neither — a description in one language is dropped |
 | `city`, `country` | Where the wall is, or `null` |
 | `author` | Who took the photograph or made the texture |
 | `licence` | An SPDX identifier where there is one: `CC0-1.0`, `CC-BY-4.0` |

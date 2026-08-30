@@ -210,6 +210,18 @@ export class WallPanel {
   }
 
   /**
+   * Scales how hard the paint's own light emits.
+   *
+   * Neon that burned as bright at noon as at midnight is the fastest way to
+   * make a daylit street look fake. The glow map itself is untouched — this is
+   * the lamp on it, not the paint.
+   */
+  setGlow(scale: number) {
+    const material = this.mesh.material as THREE.MeshStandardMaterial;
+    material.emissiveIntensity = NEON.INTENSITY * scale;
+  }
+
+  /**
    * Swaps the photograph this panel is dressed in.
    *
    * The base coat is *not* repainted here. A panel canvas holds the paint as

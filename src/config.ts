@@ -30,7 +30,38 @@ export const WORLD = {
  * Spot intensities are in candela and fall off with the square of distance,
  * which is why the lamp number is large and the fills are not.
  */
-export const NIGHT = {
+/** Night or day. Chosen in the settings, and it changes every light at once. */
+export type TimeOfDay = "night" | "day";
+export const TIMES_OF_DAY: readonly { id: TimeOfDay }[] = [
+  { id: "night" },
+  { id: "day" },
+];
+export const DEFAULT_TIME_OF_DAY: TimeOfDay = "night";
+
+/**
+ * Everything the sky decides.
+ *
+ * One shape for both times so switching is a swap rather than two code paths.
+ * The key light is the moon at night and the sun by day — same slot, because
+ * from the alley floor the difference is colour, angle and how hard it lands.
+ */
+export type SkySpec = {
+  SKY: string;
+  FOG_NEAR: number;
+  FOG_FAR: number;
+  FILL_SKY: string;
+  FILL_GROUND: string;
+  FILL_INTENSITY: number;
+  KEY_COLOR: string;
+  KEY_INTENSITY: number;
+  KEY_POSITION: readonly [number, number, number];
+  /** Multiplier on LAMP.INTENSITY. A street lamp at noon is off. */
+  LAMPS: number;
+  /** Multiplier on NEON.INTENSITY, and on the lamp head's own emission. */
+  GLOW: number;
+};
+
+export const NIGHT: SkySpec = {
   SKY: "#0a0d14",
   FOG_NEAR: 8,
   FOG_FAR: 34,
@@ -43,9 +74,45 @@ export const NIGHT = {
   FILL_GROUND: "#0b0b10",
   FILL_INTENSITY: 0.16,
 
-  MOON_COLOR: "#8fa4d4",
-  MOON_INTENSITY: 0.18,
-} as const;
+  KEY_COLOR: "#8fa4d4", // the moon
+  KEY_INTENSITY: 0.18,
+  KEY_POSITION: [-8, 14, -6],
+
+  LAMPS: 1,
+  GLOW: 1,
+};
+
+/**
+ * Overcast midday, not a postcard noon.
+ *
+ * The reason is the walls: a hard sun down a north-south alley throws one wall
+ * into a black slab of shadow and blows the other out, and both are unpaintable.
+ * A high bright sky lights both faces evenly, which is what a photograph of a
+ * wall is taken in and what this whole texture set was generated to match.
+ *
+ * Fog goes far rather than off. It is what keeps the enclosure from reading as
+ * a box with an edge, and daylight needs that more than night does.
+ */
+export const DAY: SkySpec = {
+  SKY: "#aebbc9",
+  FOG_NEAR: 18,
+  FOG_FAR: 90,
+
+  FILL_SKY: "#cdddef",
+  FILL_GROUND: "#6b6459",
+  FILL_INTENSITY: 2.1,
+
+  KEY_COLOR: "#fff4e2", // the sun, through cloud
+  KEY_INTENSITY: 1.5,
+  KEY_POSITION: [-6, 20, -3],
+
+  LAMPS: 0,
+  // Neon barely registers against daylight, and paint that glowed as hard at
+  // noon as at midnight is the fastest way to make the day look fake.
+  GLOW: 0.18,
+};
+
+export const SKIES: Record<TimeOfDay, SkySpec> = { night: NIGHT, day: DAY };
 
 /**
  * The street lamps: two of them, one per side, at opposite ends.
@@ -145,6 +212,19 @@ export type SurfaceEntry = {
   slug: string;
   /** Shown in the picker. Not translated — it is a name, not copy. */
   title: string;
+  /**
+   * A sentence about the wall, in both languages.
+   *
+   * Both keys are required for the same reason src/i18n/strings.ts requires
+   * them: a surface that reads in one language and not the other is a surface
+   * half the players cannot be told anything about. Null is for a surface whose
+   * contributor had nothing to say, which is allowed and rare.
+   *
+   * Spelled out rather than keyed by Locale because this file imports nothing —
+   * it sits at the bottom of the graph, and LINKS.SUBMIT already carries the
+   * same pair the same way.
+   */
+  description: { pt: string; en: string } | null;
   /** Null for a surface that is not from anywhere in particular. */
   city: string | null;
   country: string | null;
@@ -172,6 +252,10 @@ export type SurfaceEntry = {
 export const BUILT_IN_SURFACE: SurfaceEntry = {
   slug: "concrete031",
   title: "Concrete 031",
+  description: {
+    pt: "Placas de concreto pré-moldado, 1,20 x 0,60 m — a medida padrão, que divide o muro sem cortar nenhuma placa ao meio.",
+    en: "Cast concrete plates at 1.20 x 0.60 m — the standard size, which divides the wall without cutting a plate in half.",
+  },
   city: null,
   country: null,
   author: "ambientCG",
@@ -183,11 +267,15 @@ export const BUILT_IN_SURFACE: SurfaceEntry = {
 /** Where the manifest lives, relative to the site root. */
 export const SURFACE_MANIFEST_URL = "/wall/surfaces.json";
 
-/** Which surface dresses which side before anybody picks anything. */
-export const DEFAULT_SURFACE_SLUGS: Record<Side, string> = {
-  left: BUILT_IN_SURFACE.slug,
-  right: BUILT_IN_SURFACE.slug,
-};
+/**
+ * The street the player lands in before picking anything.
+ *
+ * One slug, not one per side. The two walls can still be dressed separately —
+ * the engine has never assumed otherwise, and a photo dropped on one of them
+ * is exactly that — but choosing a place puts that place on both, because a
+ * street has the same walls down both sides of it.
+ */
+export const DEFAULT_SURFACE_SLUG = BUILT_IN_SURFACE.slug;
 
 /**
  * The road.
