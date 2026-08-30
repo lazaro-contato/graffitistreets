@@ -1,7 +1,11 @@
 import { Engine } from "./core/Engine";
 import { Loop } from "./core/Loop";
 import { Input } from "./core/Input";
-import { buildStreet } from "./world/Street";
+import * as THREE from "three";
+import { buildStreet, buildNight } from "./world/Street";
+import { loadScenery, markerCostMB } from "./world/Scenery";
+import { setCorridor } from "./world/Colliders";
+import type { WallPlacement } from "./world/WallPlacement";
 import { WallSystem } from "./world/WallSystem";
 import {
   loadWallSurface,
@@ -54,7 +58,59 @@ const engine = new Engine(canvas);
 const loop = new Loop();
 const input = new Input(canvas);
 
-buildStreet(engine.scene, await loadRoadSurface(() => loading.advance()));
+/**
+ * A scene modelled in Blender, in place of the hand-built street.
+ *
+ * A spike: the point is to see whether a marked-up `.glb` can carry a map at
+ * all, not to be the way maps are shipped. With it set, the procedural street
+ * is not built — the file brings its own floor and buildings — and the
+ * paintable walls come from the file's `paint.*` markers instead of from the
+ * two sides of the alley.
+ */
+const SCENERY_URL: string | null = "/maps/alley.glb";
+
+const scenery = SCENERY_URL ? await loadScenery(SCENERY_URL) : null;
+
+if (scenery) {
+  // Centred on the origin, which is where the player is put down and where the
+  // collision box sits. Only sideways: height is left exactly as exported.
+  //
+  // The first version dropped the scene so its lowest point sat at zero, and
+  // that was wrong in a way worth recording — this file has its floor at zero
+  // already and something hanging a metre below it, so "lowest point" lifted
+  // the whole alley and left the paintable wall floating at chest height. The
+  // floor is the artist's to place, and Blender's Z = 0 is where it goes.
+  const centre = scenery.bounds.getCenter(new THREE.Vector3());
+  const shift = new THREE.Vector3(-centre.x, 0, -centre.z);
+  scenery.group.position.copy(shift);
+  engine.scene.add(scenery.group);
+
+  // The markers were measured in the file's own world space, so they move with
+  // it. Applied here rather than inside the loader because only this side knows
+  // where the scene ended up.
+  for (const marker of scenery.markers) marker.placement.centre.add(shift);
+
+  const size = scenery.bounds.getSize(new THREE.Vector3());
+  setCorridor(size.x / 2, size.z / 2);
+  // The file brings a floor and buildings but no light: the game's own night
+  // goes over it, with the lamps on this scene's corners rather than the
+  // alley's.
+  buildNight(engine.scene, size.x / 2, size.z / 2);
+
+  console.info(
+    `[scenery] ${size.x.toFixed(1)} x ${size.y.toFixed(1)} x ${size.z.toFixed(1)} m, ` +
+      `${scenery.markers.length} paintable marker(s)`,
+  );
+  for (const marker of scenery.markers) {
+    const { length, height } = marker.placement;
+    console.info(
+      `[scenery]   ${marker.id}: ${length.toFixed(2)} x ${height.toFixed(2)} m, ` +
+        `${markerCostMB(marker).toFixed(1)} MB`,
+    );
+  }
+} else {
+  buildStreet(engine.scene, await loadRoadSurface(() => loading.advance()));
+}
 
 // What this deployment has to dress a wall with. Read before the walls exist,
 // because the choice of surface decides which files are fetched next.
@@ -78,7 +134,27 @@ const surfaces = await loadWallSurfaces(
 await loading.breathe();
 
 // Building the panels blocks the main thread, so let the bar paint first.
-const walls = new WallSystem(surfaces);
+/**
+ * Where the paintable walls go.
+ *
+ * From the file's markers when there is one, in the order they were found —
+ * `Side` is still a two-value union on this branch, so a spike gets two walls
+ * at most. A marker's own id is what a real map would key its journal by.
+ */
+const placements: Partial<Record<Side, WallPlacement>> = {};
+if (scenery) {
+  const found = scenery.markers;
+  if (found[0]) placements.left = found[0].placement;
+  if (found[1]) placements.right = found[1].placement;
+  // With one marker the other wall would still be built at the street's
+  // default, floating in the middle of somebody's alley. Put it behind the
+  // first one, out of the way, until Side stops being left-or-right.
+  if (found.length === 1) {
+    placements.right = { ...found[0].placement, centre: new THREE.Vector3(0, -50, 0) };
+  }
+}
+
+const walls = new WallSystem(surfaces, placements);
 engine.scene.add(walls.group);
 loading.advance();
 await loading.breathe();

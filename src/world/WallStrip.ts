@@ -1,6 +1,7 @@
 import type * as THREE from "three";
 import { WallPanel } from "./WallPanel";
-import { PANELS_PER_SIDE, PANEL_TEXTURE_WIDTH, type Side } from "../config";
+import type { Side } from "../config";
+import { streetWall, type WallPlacement } from "./WallPlacement";
 import { BARE_WALL, type WallSurface } from "./Surfaces";
 
 /**
@@ -16,19 +17,32 @@ export class WallStrip {
 
   /** Width of the strip in texture pixels — a coordinate space, never allocated. */
   readonly widthPx: number;
+  /** One panel's canvas, and the strip's, in pixels. */
+  readonly panelWidthPx: number;
+  readonly heightPx: number;
+
+  /** The wall in metres, for anything reasoning about real distance on it. */
+  readonly lengthMeters: number;
+  readonly heightMeters: number;
 
   constructor(
     readonly side: Side,
     firstPanelId: number,
     group: THREE.Group,
     surface: WallSurface = BARE_WALL,
+    placement: WallPlacement = streetWall(side),
   ) {
-    for (let i = 0; i < PANELS_PER_SIDE; i++) {
-      const panel = new WallPanel(firstPanelId + i, side, i, surface);
+    for (let i = 0; i < placement.panels; i++) {
+      const panel = new WallPanel(firstPanelId + i, side, i, placement, surface);
       this.panels.push(panel);
       group.add(panel.mesh);
     }
-    this.widthPx = PANEL_TEXTURE_WIDTH * this.panels.length;
+
+    this.panelWidthPx = this.panels[0].widthPx;
+    this.heightPx = this.panels[0].heightPx;
+    this.widthPx = this.panelWidthPx * this.panels.length;
+    this.lengthMeters = placement.length;
+    this.heightMeters = placement.height;
   }
 
   /**
@@ -37,10 +51,10 @@ export class WallStrip {
    */
   panelRange(fromX: number, toX: number): { first: number; last: number } {
     return {
-      first: Math.max(0, Math.floor(fromX / PANEL_TEXTURE_WIDTH)),
+      first: Math.max(0, Math.floor(fromX / this.panelWidthPx)),
       last: Math.min(
         this.panels.length - 1,
-        Math.floor(toX / PANEL_TEXTURE_WIDTH),
+        Math.floor(toX / this.panelWidthPx),
       ),
     };
   }

@@ -1,12 +1,6 @@
 import * as THREE from "three";
-import {
-  WORLD,
-  TEXTURE,
-  NEON,
-  PANEL_TEXTURE_WIDTH,
-  PANEL_TEXTURE_HEIGHT,
-  type Side,
-} from "../config";
+import { TEXTURE, NEON, type Side } from "../config";
+import { panelPixels, wallRight, type WallPlacement } from "./WallPlacement";
 import { paintConcrete } from "./Concrete";
 import { BARE_WALL, type WallSurface } from "./Surfaces";
 
@@ -53,24 +47,33 @@ export class WallPanel {
   /** Set whenever either canvas changes; WallSystem flushes once per frame. */
   dirty = false;
 
+  /** Canvas size of this panel, derived from how much wall it covers. */
+  readonly widthPx: number;
+  readonly heightPx: number;
+
   constructor(
     id: number,
     side: Side,
     index: number,
+    private placement: WallPlacement,
     private surface: WallSurface = BARE_WALL,
   ) {
     this.id = id;
     this.side = side;
     this.index = index;
 
+    const pixels = panelPixels(placement);
+    this.widthPx = pixels.width;
+    this.heightPx = pixels.height;
+
     this.canvas = document.createElement("canvas");
-    this.canvas.width = PANEL_TEXTURE_WIDTH;
-    this.canvas.height = PANEL_TEXTURE_HEIGHT;
+    this.canvas.width = this.widthPx;
+    this.canvas.height = this.heightPx;
     this.ctx = this.canvas.getContext("2d", { willReadFrequently: false })!;
 
     this.glowCanvas = document.createElement("canvas");
-    this.glowCanvas.width = Math.round(PANEL_TEXTURE_WIDTH * NEON.MAP_SCALE);
-    this.glowCanvas.height = Math.round(PANEL_TEXTURE_HEIGHT * NEON.MAP_SCALE);
+    this.glowCanvas.width = Math.round(this.widthPx * NEON.MAP_SCALE);
+    this.glowCanvas.height = Math.round(this.heightPx * NEON.MAP_SCALE);
     this.glowCtx = this.glowCanvas.getContext("2d")!;
 
     this.paintBase();
@@ -85,10 +88,8 @@ export class WallPanel {
     this.glowTexture = new THREE.CanvasTexture(this.glowCanvas);
     this.glowTexture.colorSpace = THREE.SRGBColorSpace;
 
-    const geometry = new THREE.PlaneGeometry(
-      WORLD.PANEL_WIDTH,
-      WORLD.WALL_HEIGHT,
-    );
+    const panelWidth = placement.length / placement.panels;
+    const geometry = new THREE.PlaneGeometry(panelWidth, placement.height);
     const material = new THREE.MeshStandardMaterial({
       map: this.texture,
       normalMap: this.tileMap(surface.normal),
@@ -107,19 +108,14 @@ export class WallPanel {
     this.mesh.receiveShadow = true;
     this.mesh.userData.panelId = id;
 
-    const x = side === "left" ? -WORLD.STREET_WIDTH / 2 : WORLD.STREET_WIDTH / 2;
-
-    // A plane's local +X — the direction its uv.x grows in — ends up pointing
-    // at -Z on the left wall and +Z on the right wall after the y rotation.
-    // Laying panels out along that same direction is what makes
-    // `index + uv.x` concatenate into one continuous, gap-free strip.
-    const uvDirection = side === "left" ? -1 : 1;
-    const z =
-      uvDirection *
-      (-WORLD.STREET_LENGTH / 2 + WORLD.PANEL_WIDTH * (index + 0.5));
-
-    this.mesh.position.set(x, WORLD.WALL_HEIGHT / 2, z);
-    this.mesh.rotation.y = side === "left" ? Math.PI / 2 : -Math.PI / 2;
+    // Panels are laid out along the direction the wall's own uv.x grows in,
+    // which is what makes `index + uv.x` concatenate into one continuous,
+    // gap-free strip however the wall is turned.
+    const along = -placement.length / 2 + panelWidth * (index + 0.5);
+    this.mesh.position
+      .copy(placement.centre)
+      .addScaledVector(wallRight(placement.yaw), along);
+    this.mesh.rotation.y = placement.yaw;
   }
 
   /**
@@ -140,12 +136,10 @@ export class WallPanel {
     // assume square here and a 1024x715 photo puts the two out of step.
     const tileHeight = tileWidth * (image.height / image.width);
 
+    const panelWidth = this.placement.length / this.placement.panels;
     const texture = source.clone();
-    texture.repeat.set(
-      WORLD.PANEL_WIDTH / tileWidth,
-      WORLD.WALL_HEIGHT / tileHeight,
-    );
-    texture.offset.set((this.index * WORLD.PANEL_WIDTH) / tileWidth, 0);
+    texture.repeat.set(panelWidth / tileWidth, this.placement.height / tileHeight);
+    texture.offset.set((this.index * panelWidth) / tileWidth, 0);
     texture.needsUpdate = true;
     return texture;
   }
@@ -164,11 +158,11 @@ export class WallPanel {
     if (!pattern) return false;
 
     const scale = (this.surface.tileMeters * TEXTURE.PIXELS_PER_METER) / image.width;
-    const shift = -this.index * PANEL_TEXTURE_WIDTH;
+    const shift = -this.index * this.widthPx;
 
     pattern.setTransform(new DOMMatrix().translate(shift, 0).scale(scale, scale));
     ctx.fillStyle = pattern;
-    ctx.fillRect(0, 0, PANEL_TEXTURE_WIDTH, PANEL_TEXTURE_HEIGHT);
+    ctx.fillRect(0, 0, this.widthPx, this.heightPx);
     return true;
   }
 
@@ -199,8 +193,8 @@ export class WallPanel {
       : false;
 
     paintConcrete(this.ctx, {
-      width: PANEL_TEXTURE_WIDTH,
-      height: PANEL_TEXTURE_HEIGHT,
+      width: this.widthPx,
+      height: this.heightPx,
       seed: this.id,
       // A photograph brings its own grain, so only the damp patches go over it.
       grain: !photographed,

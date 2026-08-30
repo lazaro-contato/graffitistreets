@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import type { WallPanel } from "./WallPanel";
 import { WallStrip } from "./WallStrip";
-import { PANELS_PER_SIDE, type Side } from "../config";
+import { SIDES, type Side } from "../config";
+import { streetWall, type WallPlacement } from "./WallPlacement";
 import { BARE_WALL, type WallSurface } from "./Surfaces";
 
 /** Owns both wall strips and the once-per-frame texture upload. */
@@ -14,17 +15,35 @@ export class WallSystem {
   /** Cached raycast targets — PaintSystem hits this 60 times a second. */
   readonly meshes: THREE.Mesh[];
 
-  /** Each side is dressed separately, so the two walls can differ. */
+  /**
+   * Each side is dressed separately, so the two walls can differ.
+   *
+   * `placements` says where the walls are. Left out, they are the street's own
+   * two; supplied, they come from wherever the caller found them — today, the
+   * markers in a Blender file.
+   */
   constructor(
     surfaces: Record<Side, WallSurface> = { left: BARE_WALL, right: BARE_WALL },
+    placements: Partial<Record<Side, WallPlacement>> = {},
   ) {
-    this.left = new WallStrip("left", 0, this.group, surfaces.left);
-    this.right = new WallStrip(
-      "right",
-      PANELS_PER_SIDE,
-      this.group,
-      surfaces.right,
-    );
+    let nextPanelId = 0;
+    const strips = {} as Record<Side, WallStrip>;
+
+    for (const side of SIDES) {
+      const placement = placements[side] ?? streetWall(side);
+      const strip = new WallStrip(
+        side,
+        nextPanelId,
+        this.group,
+        surfaces[side],
+        placement,
+      );
+      nextPanelId += strip.panels.length;
+      strips[side] = strip;
+    }
+
+    this.left = strips.left;
+    this.right = strips.right;
     this.panels = [...this.left.panels, ...this.right.panels];
     this.meshes = this.panels.map((panel) => panel.mesh);
   }

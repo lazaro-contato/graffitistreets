@@ -1,11 +1,6 @@
 import { stampDab } from "./Brush";
 import { capExtent } from "./CapGeometry";
-import {
-  TEXTURE,
-  PANEL_TEXTURE_WIDTH,
-  PANEL_TEXTURE_HEIGHT,
-  isNeon,
-} from "../config";
+import { TEXTURE, isNeon } from "../config";
 import { dabSteps } from "./StrokeMath";
 import type { Stroke } from "../state/types";
 import { CAP_BY_ID, type CapId } from "../config";
@@ -50,7 +45,7 @@ function stampAcrossPanels(
   for (let i = first; i <= last; i++) {
     if (restrictTo && !restrictTo.has(i)) continue;
     const panel = strip.panels[i];
-    const localX = x - i * PANEL_TEXTURE_WIDTH;
+    const localX = x - i * strip.panelWidthPx;
 
     stampDab(panel.ctx, localX, y, radiusPx, color, alpha, cap, twist);
 
@@ -101,7 +96,7 @@ export function renderStroke(
     const point = stroke.points[i];
     const x = point.u * strip.widthPx;
     // UV v grows upwards, canvas y grows downwards.
-    const y = (1 - point.v) * PANEL_TEXTURE_HEIGHT;
+    const y = (1 - point.v) * strip.heightPx;
     const radiusPx = toPixels(point.r);
 
     if (i === 0) {
@@ -125,7 +120,7 @@ export function renderStroke(
     // is what carries a stroke across a panel boundary unbroken.
     const prev = stroke.points[i - 1];
     const px = prev.u * strip.widthPx;
-    const py = (1 - prev.v) * PANEL_TEXTURE_HEIGHT;
+    const py = (1 - prev.v) * strip.heightPx;
     const prevRadiusPx = toPixels(prev.r);
     const prevTwist = prev.w ?? 0;
     const twist = point.w ?? 0;

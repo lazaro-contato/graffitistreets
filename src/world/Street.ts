@@ -157,9 +157,11 @@ function buildStreetLamp(
   side: -1 | 1,
   end: -1 | 1,
   shadowSize: number,
+  halfWidth = WALL_X,
+  halfLength = HALF_LENGTH,
 ) {
-  const poleX = side * (WALL_X - LAMP.WALL_GAP);
-  const poleZ = end * (HALF_LENGTH - LAMP.END_INSET);
+  const poleX = side * (halfWidth - LAMP.WALL_GAP);
+  const poleZ = end * (halfLength - LAMP.END_INSET);
   const headX = poleX - side * LAMP.ARM_REACH;
 
   const pole = new THREE.Mesh(
@@ -199,7 +201,7 @@ function buildStreetLamp(
     2,
   );
   light.position.set(headX, LAMP.HEIGHT - 0.22, poleZ);
-  light.target.position.set(-side * WALL_X, 1, 0);
+  light.target.position.set(-side * halfWidth, 1, 0);
   light.castShadow = shadowSize > 0;
   if (shadowSize > 0) {
     light.shadow.mapSize.set(shadowSize, shadowSize);
@@ -212,22 +214,30 @@ function buildStreetLamp(
 }
 
 /** Builds the static scenery: road, kerbs, the enclosure, and the night. */
-export function buildStreet(
+/**
+ * The night, and the lights that make it one.
+ *
+ * Split out from buildStreet because a map that brings its own floor and
+ * buildings still needs the sky, the fog and the lamps — and the first attempt
+ * at loading one skipped all of it and rendered a black screen.
+ *
+ * `halfWidth` and `halfLength` say how big the place is, so the two lamps land
+ * on its corners rather than on the hand-built alley's.
+ */
+export function buildNight(
   scene: THREE.Scene,
-  road: RoadSurface = BARE_ROAD,
+  halfWidth = WALL_X,
+  halfLength = HALF_LENGTH,
 ) {
   scene.background = new THREE.Color(NIGHT.SKY);
   // Tuned to the arena. The old 30-90 never fired in a world this size.
   scene.fog = new THREE.Fog(NIGHT.SKY, NIGHT.FOG_NEAR, NIGHT.FOG_FAR);
 
-  buildGround(scene, road);
-  buildEnclosure(scene);
-
   // Diagonally opposite, so between them they reach both ends of both walls.
   // The second shadow map is quarter size: it is there for the direction it
   // implies, not for the detail.
-  buildStreetLamp(scene, -1, -1, 2048);
-  buildStreetLamp(scene, 1, 1, 1024);
+  buildStreetLamp(scene, -1, -1, 2048, halfWidth, halfLength);
+  buildStreetLamp(scene, 1, 1, 1024, halfWidth, halfLength);
 
   // Enough sky bounce that walls outside a cone are dark rather than black.
   scene.add(
@@ -245,4 +255,14 @@ export function buildStreet(
   );
   moon.position.set(-8, 14, -6);
   scene.add(moon);
+}
+
+/** Builds the static scenery: road, kerbs, the enclosure, and the night. */
+export function buildStreet(
+  scene: THREE.Scene,
+  road: RoadSurface = BARE_ROAD,
+) {
+  buildGround(scene, road);
+  buildEnclosure(scene);
+  buildNight(scene);
 }
