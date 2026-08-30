@@ -8,6 +8,8 @@ import {
   loadWallSurfaces,
   loadRoadSurface,
   loadAdTextures,
+  imageFromBlob,
+  photoSurface,
 } from "./world/Surfaces";
 import { loadCatalogue, entryFor, specOf } from "./world/SurfaceCatalogue";
 import { buildBillboards } from "./world/Billboard";
@@ -34,7 +36,21 @@ import {
   getLocale,
   onLocaleChange,
 } from "./i18n/i18n";
-import { ADS, DEFAULT_SURFACE_SLUG, LINKS, SIDES } from "./config";
+import { WallDrop } from "./ui/WallDrop";
+import {
+  clearPhoto,
+  loadPhoto,
+  loadPhotos,
+  savePhoto,
+} from "./state/WallPhotos";
+import {
+  ADS,
+  DEFAULT_SURFACE_SLUG,
+  LINKS,
+  SIDES,
+  WALL_PHOTO,
+  type Side,
+} from "./config";
 
 const canvas = document.getElementById("app") as HTMLCanvasElement;
 const hud = document.getElementById("hud")!;
@@ -42,6 +58,7 @@ const hud = document.getElementById("hud")!;
 // the ad panels are switched off and there are two fewer files to wait for.
 const loading = new LoadingScreen(
   1 + // the surface manifest
+    1 + // any wall photo kept from last time
     6 + // wall textures, three a side
     3 + // road textures
     (ADS.ENABLED ? 2 : 0) + // ad artwork, one per language
@@ -78,6 +95,37 @@ const surfaces = await loadWallSurfaces(
   },
   () => loading.advance(),
 );
+
+/**
+ * The photograph on each wall, or null where the manifest surface is showing.
+ *
+ * Held here because the tile slider rebuilds the same image at a new scale, and
+ * decoding the file again on every drag of it would be a decode per frame.
+ */
+const photoImages: Record<Side, HTMLImageElement | null> = {
+  left: null,
+  right: null,
+};
+
+/**
+ * How wide one tile of each photo is. Shared with the menu, which mutates it as
+ * the slider moves and as a photo is taken off.
+ */
+const photoTiles: Record<Side, number | null> = { left: null, right: null };
+
+// A photograph the player dropped in on an earlier visit wins over the surface
+// the manifest chose, and has to be in place before the panels are built: the
+// base coat is tiled into each canvas at construction, and there is no adding
+// it afterwards without repainting the wall.
+for (const [key, photo] of Object.entries(await loadPhotos())) {
+  const side = key as Side;
+  const image = await imageFromBlob(photo.blob);
+  if (!image) continue;
+  photoImages[side] = image;
+  photoTiles[side] = photo.tileMeters;
+  surfaces[side] = photoSurface(image, photo.tileMeters);
+}
+loading.advance();
 await loading.breathe();
 
 // Building the panels blocks the main thread, so let the bar paint first.
@@ -192,6 +240,13 @@ buildPhoto(engine, () => player.controls.isLocked);
  * wall in procedural concrete instead of leaving the player looking at an
  * error they cannot act on.
  */
+async function dressSide(side: Side, slug: string) {
+  const surface = await loadWallSurface(specOf(entryFor(catalogue, slug)));
+  walls.dress(side, surface);
+  store.repaintSide(side);
+}
+
+/** The street: the same walls down both sides of it. */
 async function redress(slug: string) {
   const surface = await loadWallSurface(specOf(entryFor(catalogue, slug)));
   for (const side of SIDES) {
@@ -199,6 +254,67 @@ async function redress(slug: string) {
     store.repaintSide(side);
   }
 }
+
+/**
+ * Puts a photograph the player dropped in on one wall.
+ *
+ * The file is kept on their machine and nowhere else — see state/WallPhotos.
+ * Saving happens after the wall is dressed rather than before it, so a browser
+ * that refuses IndexedDB still shows the photo for this visit instead of
+ * refusing the drop over a store nobody asked for.
+ */
+async function dropPhoto(side: Side, file: File) {
+  const image = await imageFromBlob(file);
+  // Not an image after all: it claimed a MIME type it could not decode.
+  if (!image) return;
+
+  photoImages[side] = image;
+  photoTiles[side] = WALL_PHOTO.DEFAULT_TILE_METERS;
+  walls.dress(side, photoSurface(image, WALL_PHOTO.DEFAULT_TILE_METERS));
+  store.repaintSide(side);
+  menu.refreshWalls();
+
+  void savePhoto(side, {
+    blob: file,
+    tileMeters: WALL_PHOTO.DEFAULT_TILE_METERS,
+  });
+}
+
+/**
+ * Redraws the photo already on a wall at a different tile size.
+ *
+ * The decoded image is reused rather than read again, because this runs on
+ * every step of the slider — going back to the file each time would be a decode
+ * per frame of a drag.
+ *
+ * The saved record is updated too, so the wall comes back at the size it was
+ * left at rather than at the default.
+ */
+function retilePhoto(side: Side, tileMeters: number) {
+  const image = photoImages[side];
+  if (!image) return;
+
+  photoTiles[side] = tileMeters;
+  walls.dress(side, photoSurface(image, tileMeters));
+  store.repaintSide(side);
+
+  void loadPhoto(side).then((stored) => {
+    if (stored) void savePhoto(side, { blob: stored.blob, tileMeters });
+  });
+}
+
+/** Takes the photo off a wall and puts its manifest surface back. */
+/** Takes the photo off one wall and puts the street's own back on it. */
+function removePhoto(side: Side) {
+  photoImages[side] = null;
+  photoTiles[side] = null;
+  void clearPhoto(side);
+  void dressSide(side, dressing.slug);
+}
+
+new WallDrop(canvas, engine.camera, walls, {
+  onDrop: (side, file) => void dropPhoto(side, file),
+});
 
 const menu = new Menu(
   {
@@ -210,6 +326,8 @@ const menu = new Menu(
       dressing.slug = slug;
       void redress(slug);
     },
+    onPhotoTile: (side, tileMeters) => retilePhoto(side, tileMeters),
+    onPhotoRemoved: (side) => removePhoto(side),
     onBrushSizing: (sizing) => can.setSizing(sizing),
     onTimeOfDay: (time) => sky.set(time),
     onResume: () => enterStreet(),
@@ -227,7 +345,7 @@ const menu = new Menu(
       menu.show("main");
     },
   },
-  { catalogue, current: dressing.slug },
+  { catalogue, current: dressing.slug, photo: photoTiles },
 );
 
 const workshop = new Workshop(loadout, {

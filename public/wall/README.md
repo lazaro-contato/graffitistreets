@@ -87,3 +87,25 @@ converting. The material's own `aoMap` wants a second UV set the panels do not
 have, and baking it costs nothing at run time.
 
 Sources, both CC0: polyhaven.com/textures, ambientcg.com
+
+## Your own photo, without the manifest
+
+A wall can also be dressed by dragging an image straight onto it in the game —
+onto the wall itself, in the street, which is how the game knows which of the
+two you meant. That file goes into IndexedDB and **never leaves the browser**:
+there is no upload, and nothing to moderate or licence, because nobody else
+ever sees it.
+
+Choosing a place from the manifest dresses both walls and takes any photo back
+off. A photo is an override on one wall, and the settings list it under the
+street rather than among the places — it is not somewhere you can go.
+
+It is the right way to try a wall from your own street. Getting that same wall
+into the repository, for everyone, is the manifest above: a folder, an entry,
+and a line in [ASSETS.md](../../ASSETS.md) saying it is yours to give.
+
+Two things a dropped photo does not get: a normal or roughness map, since the
+relief on the wall belonged to a different photograph at a different scale, and
+a seamless tile. The tile-size slider is there because only you know how much
+wall your photo covers — and because at some sizes the repeat is much easier to
+ignore than at others.

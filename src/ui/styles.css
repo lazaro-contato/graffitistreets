@@ -23,6 +23,17 @@ body {
   font-family: system-ui, sans-serif;
 }
 
+/* Dragging an image over the street. An inset edge rather than an overlay: the
+   walls have to stay visible while a file is over them, because which wall the
+   drop lands on is decided by where it is let go. See ui/WallDrop.ts. */
+#app[data-dropping="on"] {
+  box-shadow: inset 0 0 0 3px var(--neon);
+}
+
+#app[data-dropping="refused"] {
+  box-shadow: inset 0 0 0 3px #ff3b30;
+}
+
 /* Shutter flash for a photo. Sits above the canvas but under every panel, and
    is inert until the class goes on. */
 #flash {
@@ -486,6 +497,61 @@ a.menu-item {
   font-size: 0.72rem;
   line-height: 1.45;
   opacity: 0.58;
+}
+
+/* A photo overrides the city on one wall, so it is listed apart from the
+   places rather than among them — it is not somewhere you can go. */
+.wall-photos {
+  display: grid;
+  gap: 0.7rem;
+  width: min(24rem, 100%);
+  margin-top: 0.9rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.wall-photo-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.wall-photo-head .wall-label {
+  margin: 0;
+}
+
+.wall-photo-drop {
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-family: var(--display);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+.wall-photo-drop:hover {
+  opacity: 1;
+  color: var(--neon);
+}
+
+/* How wide one tile of a dropped photo is. Only the person who stood in front
+   of that wall knows, so it is a control rather than a guess. */
+.wall-tile {
+  width: 100%;
+  margin-top: 0.35rem;
+  accent-color: var(--neon);
+}
+
+.wall-drop-note {
+  margin: 0.1rem 0 0.4rem;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  opacity: 0.42;
 }
 
 /* Mode cards: the play button, split in two. Picking one sets how you move

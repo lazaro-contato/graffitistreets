@@ -264,6 +264,30 @@ export const BUILT_IN_SURFACE: SurfaceEntry = {
   tileMeters: 2.4,
 };
 
+/**
+ * A wall photograph dropped in by the player.
+ *
+ * It never leaves the browser — there is no upload here and no server to take
+ * one — so the only limit that matters is what IndexedDB will hold without the
+ * tab noticing. 12 MB is far past any phone photograph and still small enough
+ * that a fat one cannot fill somebody's disk quota by accident.
+ */
+export const WALL_PHOTO = {
+  MAX_BYTES: 12 * 1024 * 1024,
+  /**
+   * The tile size a dropped photo starts at, in metres.
+   *
+   * Two metres is a wall somebody photographed from a few paces back, which is
+   * what a phone photo of a wall almost always is. It is a starting point, not
+   * a guess to live with: only the person who stood there knows how wide that
+   * wall really was, so it is theirs to change.
+   */
+  DEFAULT_TILE_METERS: 2,
+  /** What the tile slider will go between. Below half a metre it is mosaic. */
+  MIN_TILE_METERS: 0.5,
+  MAX_TILE_METERS: 12,
+} as const;
+
 /** Where the manifest lives, relative to the site root. */
 export const SURFACE_MANIFEST_URL = "/wall/surfaces.json";
 

@@ -36,6 +36,47 @@ function loadImage(url: string): Promise<HTMLImageElement | null> {
   });
 }
 
+/**
+ * Decodes a photograph the player dropped in, and resolves to null if it is not
+ * one — a renamed text file, or an image format this browser cannot read.
+ *
+ * The object URL is revoked once `decode()` has resolved. At that point the
+ * bitmap is in memory and the element no longer needs the blob behind it, so
+ * holding the URL open would only leak one per drop.
+ */
+export async function imageFromBlob(
+  blob: Blob,
+): Promise<HTMLImageElement | null> {
+  const url = URL.createObjectURL(blob);
+  const image = new Image();
+  image.src = url;
+
+  try {
+    await image.decode();
+    return image;
+  } catch {
+    return null;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+/**
+ * A wall dressed in a dropped photograph.
+ *
+ * No normal or roughness map goes with it. Those belong to whatever surface was
+ * on the wall before, they were photographed at a different scale, and tiling
+ * somebody else's relief at this photo's tile size puts the lighting visibly
+ * out of step with the picture. A photograph carries its own shading anyway —
+ * that is what makes it a photograph.
+ */
+export function photoSurface(
+  albedo: HTMLImageElement,
+  tileMeters: number,
+): WallSurface {
+  return { albedo, normal: null, roughness: null, tileMeters };
+}
+
 function asDataMap(image: HTMLImageElement | null): THREE.Texture | null {
   if (!image) return null;
 
