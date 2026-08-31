@@ -4,7 +4,7 @@ import type { Aim, AimResult } from "./Aim";
 import type { DripSystem } from "./DripSystem";
 import type { Transport } from "../net/Transport";
 import type { Stroke, StrokePoint } from "../state/types";
-import type { Side } from "../config";
+import type { SurfaceId } from "../config";
 import { TwistTracker } from "./Twist";
 import { DwellTracker } from "./Dwell";
 
@@ -16,7 +16,7 @@ const SAMPLE_INTERVAL = 1 / SPRAY.SAMPLE_HZ;
  */
 export class PaintSystem {
   private activeStroke: Stroke | null = null;
-  private activeSide: Side | null = null;
+  private activeSide: SurfaceId | null = null;
   private accumulator = 0;
 
   /** Turns a cap that follows the stroke. Only the roller opts in. */

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { TEXTURE, WORLD, PANELS_PER_SIDE, type Side } from "../config";
+import { TEXTURE, WORLD, PANELS_PER_SIDE, type SurfaceId } from "../config";
 
 /**
  * Where a paintable wall sits in the world, and how big it is.
@@ -30,6 +30,17 @@ export type WallPlacement = {
   height: number;
   /** How many canvases the strip is cut into, to bound each texture upload. */
   panels: number;
+  /**
+   * Whether the wall is only the paint, with nothing underneath it.
+   *
+   * The street's own walls are a surface *and* a canvas: they carry a base coat
+   * of concrete or photography, and paint goes on top. A wall marked up in a
+   * modelled scene is not that — the building it is stuck to already has a
+   * texture, and covering it with the game's concrete throws away the thing the
+   * artist made. So that one starts fully transparent and only ever holds what
+   * has been sprayed on it.
+   */
+  transparent?: boolean;
 };
 
 /** The direction a wall's uv.x grows in, given its yaw. */
@@ -47,12 +58,31 @@ export function yawFromNormal(normal: THREE.Vector3): number {
   return Math.atan2(normal.x, normal.z);
 }
 
+/**
+ * How densely a wall is painted, in pixels per metre.
+ *
+ * The standard density, unless that would make this wall's canvas larger than
+ * TEXTURE.MAX_WALL_MEGAPIXELS — in which case it drops to whatever fits. Big
+ * walls are the ones nobody can get close to, so the detail they lose is
+ * detail nothing could have shown.
+ */
+export function wallDensity(placement: WallPlacement): number {
+  const area = placement.length * placement.height;
+  const budget = TEXTURE.MAX_WALL_MEGAPIXELS * 1e6;
+  const standard = TEXTURE.PIXELS_PER_METER;
+  return area * standard ** 2 <= budget
+    ? standard
+    : Math.sqrt(budget / area);
+}
+
 /** Canvas size of one panel of this wall, in pixels. */
 export function panelPixels(placement: WallPlacement) {
+  const density = wallDensity(placement);
   const width = placement.length / placement.panels;
   return {
-    width: Math.round(width * TEXTURE.PIXELS_PER_METER),
-    height: Math.round(placement.height * TEXTURE.PIXELS_PER_METER),
+    density,
+    width: Math.round(width * density),
+    height: Math.round(placement.height * density),
   };
 }
 
@@ -62,7 +92,7 @@ export function panelPixels(placement: WallPlacement) {
  * Kept here so the hand-built alley and a wall read out of a file arrive at
  * WallPanel through the same door.
  */
-export function streetWall(side: Side): WallPlacement {
+export function streetWall(side: SurfaceId): WallPlacement {
   const left = side === "left";
   return {
     centre: new THREE.Vector3(

@@ -1,6 +1,6 @@
 import type * as THREE from "three";
 import { WallPanel } from "./WallPanel";
-import type { Side } from "../config";
+import type { SurfaceId } from "../config";
 import { streetWall, type WallPlacement } from "./WallPlacement";
 import { BARE_WALL, type WallSurface } from "./Surfaces";
 
@@ -17,6 +17,15 @@ export class WallStrip {
 
   /** Width of the strip in texture pixels — a coordinate space, never allocated. */
   readonly widthPx: number;
+  /**
+   * How densely this wall is painted.
+   *
+   * Per wall rather than global: stroke radii are stored in metres, so this is
+   * what converts them, and a big wall painted at a lower density has to
+   * convert at that lower density or every mark on it comes out the wrong size.
+   */
+  readonly pixelsPerMeter: number;
+
   /** One panel's canvas, and the strip's, in pixels. */
   readonly panelWidthPx: number;
   readonly heightPx: number;
@@ -26,7 +35,7 @@ export class WallStrip {
   readonly heightMeters: number;
 
   constructor(
-    readonly side: Side,
+    readonly side: SurfaceId,
     firstPanelId: number,
     group: THREE.Group,
     surface: WallSurface = BARE_WALL,
@@ -38,6 +47,7 @@ export class WallStrip {
       group.add(panel.mesh);
     }
 
+    this.pixelsPerMeter = this.panels[0].pixelsPerMeter;
     this.panelWidthPx = this.panels[0].widthPx;
     this.heightPx = this.panels[0].heightPx;
     this.widthPx = this.panelWidthPx * this.panels.length;

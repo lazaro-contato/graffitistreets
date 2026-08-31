@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ROAD_SURFACE, type Side, type SurfaceSpec } from "../config";
+import { ROAD_SURFACE, type SurfaceId, type SurfaceSpec } from "../config";
 import type { Locale } from "../i18n/strings";
 
 /**
@@ -92,9 +92,9 @@ export function loadWallSurface(
  * manifest, and nothing down here should have to know that a catalogue exists.
  */
 export async function loadWallSurfaces(
-  specs: Record<Side, SurfaceSpec>,
+  specs: Record<SurfaceId, SurfaceSpec>,
   onEach: () => void = () => {},
-): Promise<Record<Side, WallSurface>> {
+): Promise<Record<SurfaceId, WallSurface>> {
   const [left, right] = await Promise.all([
     loadOne(specs.left, onEach),
     loadOne(specs.right, onEach),

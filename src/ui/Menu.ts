@@ -4,7 +4,7 @@ import {
   DEFAULT_BRUSH_SIZING,
   type BrushSizing,
   type MovementMode,
-  type Side,
+  type SurfaceId,
   type SurfaceEntry,
 } from "../config";
 import { LOCALES, type Locale } from "../i18n/strings";
@@ -36,7 +36,7 @@ const SUB_SCREENS = new Set<MenuScreen>(["modes", "settings", "controls"]);
 export type WallDressing = {
   catalogue: readonly SurfaceEntry[];
   /** Mutated by the menu as choices are made, so it survives a reopen. */
-  current: Record<Side, string>;
+  current: Record<SurfaceId, string>;
 };
 
 export type MenuHandlers = {
@@ -48,7 +48,7 @@ export type MenuHandlers = {
    * journal onto the new base coat is the caller's, in main.ts, because both
    * the wall system and the stroke store live below this.
    */
-  onWallSurface: (side: Side, slug: string) => void;
+  onWallSurface: (side: SurfaceId, slug: string) => void;
   /** Fires on every change, including the stored one restored at start-up. */
   onBrushSizing: (sizing: BrushSizing) => void;
   onResume: () => void;

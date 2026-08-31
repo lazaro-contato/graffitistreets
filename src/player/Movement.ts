@@ -1,6 +1,10 @@
 import * as THREE from "three";
 import { PLAYER, type MovementMode } from "../config";
-import { clampToCorridor } from "../world/Colliders";
+import {
+  clampToCorridor,
+  clampToBlocks,
+  groundHeightAt,
+} from "../world/Colliders";
 
 // Scratch vectors, reused every frame to avoid per-frame allocation.
 const forward = new THREE.Vector3();
@@ -95,9 +99,16 @@ export class Movement {
     this.velocity.lerp(target, 1 - Math.exp(-rate * dt));
     camera.position.addScaledVector(this.velocity, dt);
 
-    const { hitX, hitZ } = clampToCorridor(camera.position);
-    if (hitX) this.velocity.x = 0;
-    if (hitZ) this.velocity.z = 0;
+    const corridor = clampToCorridor(camera.position);
+    // After the corridor, so a box standing against the outer wall pushes the
+    // player back in rather than being overruled by it.
+    const solid = clampToBlocks(
+      camera.position,
+      this.feetY,
+      this.eyeHeight,
+    );
+    if (corridor.hitX || solid.hitX) this.velocity.x = 0;
+    if (corridor.hitZ || solid.hitZ) this.velocity.z = 0;
 
     // Stance settles before the vertical step, so the flight ceiling is
     // measured against the eye height actually in use this frame.
@@ -108,14 +119,14 @@ export class Movement {
       (targetEyeHeight - this.eyeHeight) *
       (1 - Math.exp(-PLAYER.CROUCH_LERP * dt));
 
-    if (flying) this.fly(intent, dt);
-    else this.fall(dt);
+    if (flying) this.fly(intent, dt, camera.position);
+    else this.fall(dt, camera.position);
 
     camera.position.y = this.feetY + this.eyeHeight;
   }
 
   /** Free flight: no gravity, the climb rate simply chases the input. */
-  private fly(intent: MoveIntent, dt: number) {
+  private fly(intent: MoveIntent, dt: number, at: THREE.Vector3) {
     const climb = (intent.space ? 1 : 0) - (intent.shift ? 1 : 0);
     const wanted = climb * PLAYER.FLY_SPEED;
     this.verticalVelocity +=
@@ -126,27 +137,35 @@ export class Movement {
     // The ceiling is on the eye, not the feet, so crouching in mid air does
     // not buy extra altitude.
     const highest = Math.max(0, PLAYER.FLY_CEILING - this.eyeHeight);
-    if (this.feetY <= 0) {
-      this.feetY = 0;
+    const ground = groundHeightAt(at.x, at.z, this.feetY);
+    if (this.feetY <= ground) {
+      this.feetY = ground;
       this.verticalVelocity = Math.max(0, this.verticalVelocity);
     } else if (this.feetY >= highest) {
       this.feetY = highest;
       this.verticalVelocity = Math.min(0, this.verticalVelocity);
     }
 
-    this.grounded = this.feetY <= 0;
+    this.grounded = this.feetY <= ground;
   }
 
-  /** On foot: the street is flat, so the ground is always y = 0. */
-  private fall(dt: number) {
+  /**
+   * On foot. The ground is zero out in the street and the top of whatever is
+   * underfoot everywhere else, which is what lets somebody jump onto a crate
+   * and stay there.
+   */
+  private fall(dt: number, at: THREE.Vector3) {
     // Stepping position with the *average* velocity over the frame, rather
     // than the velocity at its start, is exact for constant acceleration —
     // otherwise the jump peaks lower on a slow machine than on a fast one.
     this.feetY += (this.verticalVelocity - (PLAYER.GRAVITY * dt) / 2) * dt;
     this.verticalVelocity -= PLAYER.GRAVITY * dt;
 
-    if (this.feetY <= 0) {
-      this.feetY = 0;
+    // Read after the step, so the surface being landed on is the one under the
+    // feet at the end of the frame rather than the start of it.
+    const ground = groundHeightAt(at.x, at.z, this.feetY);
+    if (this.feetY <= ground) {
+      this.feetY = ground;
       this.verticalVelocity = 0;
       this.grounded = true;
     }

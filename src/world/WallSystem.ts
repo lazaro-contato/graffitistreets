@@ -1,55 +1,66 @@
 import * as THREE from "three";
 import type { WallPanel } from "./WallPanel";
 import { WallStrip } from "./WallStrip";
-import { SIDES, type Side } from "../config";
+import type { SurfaceId } from "../config";
 import { streetWall, type WallPlacement } from "./WallPlacement";
 import { BARE_WALL, type WallSurface } from "./Surfaces";
 
-/** Owns both wall strips and the once-per-frame texture upload. */
+/** Owns every paintable wall in the world, and the once-per-frame upload. */
 export class WallSystem {
   readonly group = new THREE.Group();
-  readonly left: WallStrip;
-  readonly right: WallStrip;
-  readonly panels: WallPanel[];
+  readonly panels: WallPanel[] = [];
 
-  /** Cached raycast targets — PaintSystem hits this 60 times a second. */
-  readonly meshes: THREE.Mesh[];
+  /** Cached raycast targets — Aim hits this 60 times a second. */
+  readonly meshes: THREE.Mesh[] = [];
+
+  private byId = new Map<SurfaceId, WallStrip>();
 
   /**
-   * Each side is dressed separately, so the two walls can differ.
+   * One strip per entry in `placements`.
    *
-   * `placements` says where the walls are. Left out, they are the street's own
-   * two; supplied, they come from wherever the caller found them — today, the
-   * markers in a Blender file.
+   * Given none, it builds the hand-built street's two. Given twelve — which is
+   * what a marked-up model turned out to arrive with — it builds twelve, and
+   * nothing above here counts them.
    */
   constructor(
-    surfaces: Record<Side, WallSurface> = { left: BARE_WALL, right: BARE_WALL },
-    placements: Partial<Record<Side, WallPlacement>> = {},
+    surfaces: Record<SurfaceId, WallSurface> = {},
+    placements: Record<SurfaceId, WallPlacement> = {
+      left: streetWall("left"),
+      right: streetWall("right"),
+    },
   ) {
     let nextPanelId = 0;
-    const strips = {} as Record<Side, WallStrip>;
 
-    for (const side of SIDES) {
-      const placement = placements[side] ?? streetWall(side);
+    for (const [id, placement] of Object.entries(placements)) {
       const strip = new WallStrip(
-        side,
+        id,
         nextPanelId,
         this.group,
-        surfaces[side],
+        surfaces[id] ?? BARE_WALL,
         placement,
       );
       nextPanelId += strip.panels.length;
-      strips[side] = strip;
+      this.byId.set(id, strip);
+      this.panels.push(...strip.panels);
     }
 
-    this.left = strips.left;
-    this.right = strips.right;
-    this.panels = [...this.left.panels, ...this.right.panels];
     this.meshes = this.panels.map((panel) => panel.mesh);
   }
 
-  strip(side: Side) {
-    return side === "left" ? this.left : this.right;
+  /** Every wall there is, in the order they were built. */
+  get strips(): readonly WallStrip[] {
+    return [...this.byId.values()];
+  }
+
+  /**
+   * Returns undefined for a wall this world does not have.
+   *
+   * Which happens for real: a journal painted on one map, replayed on another,
+   * names walls that are not here. The caller drops those strokes rather than
+   * crashing on them.
+   */
+  strip(id: SurfaceId) {
+    return this.byId.get(id);
   }
 
   get(id: number) {
@@ -68,8 +79,8 @@ export class WallSystem {
    * the paint survives a surface swap because it was never pixels to begin
    * with.
    */
-  dress(side: Side, surface: WallSurface) {
-    this.strip(side).setSurface(surface);
+  dress(id: SurfaceId, surface: WallSurface) {
+    this.strip(id)?.setSurface(surface);
   }
 
   /**

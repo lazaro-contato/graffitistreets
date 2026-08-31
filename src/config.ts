@@ -80,9 +80,21 @@ export const MOVEMENT_MODES: readonly { id: MovementMode }[] = [
   { id: "free" },
 ];
 
-/** Which wall of the street a surface belongs to. */
-export type Side = "left" | "right";
-export const SIDES = ["left", "right"] as const;
+/**
+ * Identity of one paintable surface, and the key its paint is filed under.
+ *
+ * A free string rather than left-or-right, because a map modelled elsewhere
+ * arrives with as many walls as somebody felt like marking — twelve, in the
+ * one this was widened for. The hand-built street still calls its two "left"
+ * and "right", and nothing about it changed.
+ *
+ * It is stored on every stroke, so it is persistence format: a name is frozen
+ * once anything has been painted on it, and renaming a wall orphans its paint.
+ */
+export type SurfaceId = string;
+
+/** The two the hand-built street has. */
+export const STREET_SIDES = ["left", "right"] as const;
 
 // 8 / 4 = 2 panels per side, 4 total
 export const PANELS_PER_SIDE = WORLD.STREET_LENGTH / WORLD.PANEL_WIDTH;
@@ -101,6 +113,21 @@ export const TEXTURE = {
    * Raise to 256 for sharper walls at 13 MB; this is the only value to touch.
    */
   PIXELS_PER_METER: 192,
+  /**
+   * Ceiling on one wall's canvas, in megapixels.
+   *
+   * 192 px/m was chosen for a 12 x 3 m alley wall, which is 2.5 MP and about
+   * 10 MB with its glow map. A building face marked up in a modelled scene is
+   * 19 x 9 m, and at the same density that is 31 MB — one wall costing four
+   * times the whole hand-built street. Past this ceiling a wall is painted at
+   * a lower density instead, which nobody can see: the spray only reaches two
+   * metres, so a wall that large is looked at from across the road.
+   *
+   * Two, which is a little over what the whole 12 x 3 m alley wall costs. It
+   * is a backstop rather than a plan: a wall sized to the band somebody can
+   * actually reach comes in under it and is painted at full density.
+   */
+  MAX_WALL_MEGAPIXELS: 2,
   BASE_COLOR: "#8d8b86", // concrete
   NOISE_AMOUNT: 0.06,
 } as const;
@@ -184,7 +211,7 @@ export const BUILT_IN_SURFACE: SurfaceEntry = {
 export const SURFACE_MANIFEST_URL = "/wall/surfaces.json";
 
 /** Which surface dresses which side before anybody picks anything. */
-export const DEFAULT_SURFACE_SLUGS: Record<Side, string> = {
+export const DEFAULT_SURFACE_SLUGS: Record<SurfaceId, string> = {
   left: BUILT_IN_SURFACE.slug,
   right: BUILT_IN_SURFACE.slug,
 };

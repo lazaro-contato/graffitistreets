@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import { TEXTURE, NEON, type Side } from "../config";
+import { NEON, type SurfaceId } from "../config";
 import { panelPixels, wallRight, type WallPlacement } from "./WallPlacement";
 import { paintConcrete } from "./Concrete";
 import { BARE_WALL, type WallSurface } from "./Surfaces";
 
-export type { Side };
+export type { SurfaceId };
 
 /**
  * One slice of a wall strip: a mesh, a 2D canvas and a CanvasTexture.
@@ -15,7 +15,7 @@ export type { Side };
  */
 export class WallPanel {
   readonly id: number;
-  readonly side: Side;
+  readonly side: SurfaceId;
   readonly index: number;
   readonly mesh: THREE.Mesh;
   readonly canvas: HTMLCanvasElement;
@@ -50,10 +50,12 @@ export class WallPanel {
   /** Canvas size of this panel, derived from how much wall it covers. */
   readonly widthPx: number;
   readonly heightPx: number;
+  /** How densely this wall is painted. Big walls drop below the standard. */
+  readonly pixelsPerMeter: number;
 
   constructor(
     id: number,
-    side: Side,
+    side: SurfaceId,
     index: number,
     private placement: WallPlacement,
     private surface: WallSurface = BARE_WALL,
@@ -65,6 +67,7 @@ export class WallPanel {
     const pixels = panelPixels(placement);
     this.widthPx = pixels.width;
     this.heightPx = pixels.height;
+    this.pixelsPerMeter = pixels.density;
 
     this.canvas = document.createElement("canvas");
     this.canvas.width = this.widthPx;
@@ -102,6 +105,11 @@ export class WallPanel {
       emissive: new THREE.Color(0xffffff),
       emissiveMap: this.glowTexture,
       emissiveIntensity: NEON.INTENSITY,
+      // A paint-only wall shows the building behind it wherever nothing has
+      // been sprayed. Depth writing stays on: the plane sits a couple of
+      // centimetres proud of what it is stuck to, so there is nothing behind
+      // it to sort against.
+      transparent: placement.transparent === true,
     });
 
     this.mesh = new THREE.Mesh(geometry, material);
@@ -157,7 +165,7 @@ export class WallPanel {
     const pattern = ctx.createPattern(image, "repeat");
     if (!pattern) return false;
 
-    const scale = (this.surface.tileMeters * TEXTURE.PIXELS_PER_METER) / image.width;
+    const scale = (this.surface.tileMeters * this.pixelsPerMeter) / image.width;
     const shift = -this.index * this.widthPx;
 
     pattern.setTransform(new DOMMatrix().translate(shift, 0).scale(scale, scale));
@@ -175,6 +183,16 @@ export class WallPanel {
    * repaints the panel.
    */
   paintBase() {
+    if (this.placement.transparent) {
+      this.ctx.clearRect(0, 0, this.widthPx, this.heightPx);
+      this.glowCtx.globalCompositeOperation = "source-over";
+      this.glowCtx.fillStyle = "#000000";
+      this.glowCtx.fillRect(0, 0, this.glowCanvas.width, this.glowCanvas.height);
+      this.hasGlow = false;
+      this.dirty = true;
+      return;
+    }
+
     // Black, not cleared. An emissiveMap is read as RGB and its alpha is
     // ignored, so "no light here" has to be an opaque black pixel — a
     // transparent one still carries whatever colour was last written into it,

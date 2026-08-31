@@ -1,9 +1,9 @@
-import { DRIP, WORLD, type Side } from "../config";
+import { DRIP, WORLD, type SurfaceId } from "../config";
 import type { Transport } from "../net/Transport";
 
 type Drip = {
   strokeId: string;
-  side: Side;
+  side: SurfaceId;
   color: string;
   u: number;
   v: number;
@@ -46,7 +46,7 @@ export class DripSystem {
    * it faster, and holding on loads it for longer.
    */
   spawn(
-    side: Side,
+    side: SurfaceId,
     u: number,
     v: number,
     color: string,

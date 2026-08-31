@@ -1,5 +1,5 @@
 import type { Stroke, StrokeAppend } from "./types";
-import type { Side } from "../config";
+import type { SurfaceId } from "../config";
 import type { WallSystem } from "../world/WallSystem";
 import type { WallStrip } from "../world/WallStrip";
 import { renderStroke, panelsTouchedBy } from "../paint/StrokeRenderer";
@@ -9,7 +9,7 @@ import { renderStroke, panelsTouchedBy } from "../paint/StrokeRenderer";
  * This is the source of truth — the panel canvases are just a rendering of it.
  */
 export class StrokeStore {
-  private bySide = new Map<Side, Stroke[]>();
+  private bySide = new Map<SurfaceId, Stroke[]>();
   private index = new Map<string, Stroke>();
 
   constructor(private walls: WallSystem) {}
@@ -44,13 +44,16 @@ export class StrokeStore {
       ...stroke,
       points: prev ? [prev, point] : [point],
     };
-    renderStroke(this.walls.strip(side), segment);
+    // A wall this world does not have: a journal from another map naming a
+    // surface that is not here. Drop it rather than crash on it.
+    const strip = this.walls.strip(side);
+    if (strip) renderStroke(strip, segment);
   }
 
   /** Removes the author's most recent stroke and repaints what it covered. */
   undo(authorId: string) {
     let latest: Stroke | undefined;
-    let latestSide: Side | undefined;
+    let latestSide: SurfaceId | undefined;
 
     for (const [side, list] of this.bySide) {
       for (let i = list.length - 1; i >= 0; i--) {
@@ -71,16 +74,16 @@ export class StrokeStore {
     this.index.delete(latest.id);
 
     const strip = this.walls.strip(latestSide);
-    this.repaintPanels(strip, panelsTouchedBy(strip, latest));
+    if (strip) this.repaintPanels(strip, panelsTouchedBy(strip, latest));
   }
 
   /** Drops every stroke on one wall. */
-  clearSide(side: Side) {
+  clearSide(side: SurfaceId) {
     for (const stroke of this.bySide.get(side) ?? []) {
       this.index.delete(stroke.id);
     }
     this.bySide.delete(side);
-    this.walls.strip(side).paintBase();
+    this.walls.strip(side)?.paintBase();
   }
 
   /**
@@ -103,8 +106,9 @@ export class StrokeStore {
   }
 
   /** Rebuilds an entire wall from scratch. */
-  repaintSide(side: Side) {
+  repaintSide(side: SurfaceId) {
     const strip = this.walls.strip(side);
+    if (!strip) return;
     strip.paintBase();
     for (const stroke of this.bySide.get(side) ?? []) {
       renderStroke(strip, stroke);
@@ -116,7 +120,7 @@ export class StrokeStore {
   }
 
   load(json: string) {
-    this.bySide = new Map(JSON.parse(json) as [Side, Stroke[]][]);
+    this.bySide = new Map(JSON.parse(json) as [SurfaceId, Stroke[]][]);
     this.index.clear();
     for (const [side, list] of this.bySide) {
       for (const stroke of list) this.index.set(stroke.id, stroke);

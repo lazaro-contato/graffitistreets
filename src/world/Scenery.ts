@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { yawFromNormal, type WallPlacement } from "./WallPlacement";
+import type { Block } from "./Colliders";
 import { TEXTURE } from "../config";
 
 /**
@@ -35,6 +36,26 @@ const MARKER_NAME = /^paint[._]?(.+)$/i;
 /** How far a paintable plane floats off the wall it was marked against. */
 const PROUD = 0.02;
 
+/**
+ * A mesh flatter than this is taken for a floor rather than an obstacle.
+ *
+ * Without it the ground plane is a box like any other, and the player is
+ * pushed off the edge of it the moment they step on.
+ */
+const FLAT_ENOUGH = 0.2;
+
+/** Say this in a node's name and the player walks straight through it. */
+const NO_COLLIDE = /nocollide/i;
+
+/**
+ * Nodes named like this are collision volumes, not scenery.
+ *
+ * Drawn nowhere and solid everywhere. Authored ones beat derived ones: a box
+ * an artist put around a stack of crates knows where the gap between them is,
+ * and a box derived from a facade does not know it has a doorway.
+ */
+const COLLIDER_NAME = /^collider/i;
+
 export type PaintMarker = {
   /** The name after the prefix. Frozen once anything has been painted on it. */
   id: string;
@@ -44,6 +65,8 @@ export type PaintMarker = {
 export type Scenery = {
   group: THREE.Group;
   markers: PaintMarker[];
+  /** Volumes the artist marked as solid. Hidden, never drawn. */
+  colliders: THREE.Mesh[];
   /** The whole scene's extent, for spawning and for the collision box. */
   bounds: THREE.Box3;
   dispose(): void;
@@ -119,6 +142,9 @@ function placementOf(mesh: THREE.Mesh): WallPlacement | null {
     height,
     // One canvas per few metres, so no single texture upload gets large.
     panels: Math.max(1, Math.round(length / 4)),
+    // A marker is a place to paint, not a wall. The building behind it keeps
+    // its own texture and shows through wherever nothing has been sprayed.
+    transparent: true,
   };
 }
 
@@ -134,11 +160,20 @@ export async function loadScenery(url: string): Promise<Scenery> {
   root.updateMatrixWorld(true);
 
   const markers: PaintMarker[] = [];
+  const colliders: THREE.Mesh[] = [];
   const remove: THREE.Object3D[] = [];
 
   root.traverse((object) => {
     if ((object as THREE.Light).isLight || (object as THREE.Camera).isCamera) {
       remove.push(object);
+      return;
+    }
+
+    if (COLLIDER_NAME.test(object.name) && (object as THREE.Mesh).isMesh) {
+      colliders.push(object as THREE.Mesh);
+      // Kept in the graph so its world matrix stays valid until the boxes are
+      // read, but never drawn.
+      object.visible = false;
       return;
     }
 
@@ -165,6 +200,7 @@ export async function loadScenery(url: string): Promise<Scenery> {
   return {
     group: root,
     markers,
+    colliders,
     bounds,
     dispose() {
       root.removeFromParent();
@@ -181,6 +217,52 @@ export async function loadScenery(url: string): Promise<Scenery> {
       });
     },
   };
+}
+
+/**
+ * A solid box for every piece of scenery worth walking into.
+ *
+ * Authored `collider*` volumes where the file has them; otherwise a box around
+ * every piece of scenery, since a map with thirty crates and no collision at
+ * all is worse than one with thirty rough boxes. The derived kind costs
+ * precision — the box of a facade with a doorway in it has no doorway — and
+ * `nocollide` in a node's name opts out of it.
+ *
+ * Call this after the scene has been positioned: the boxes are in world space,
+ * and moving the group afterwards would leave them behind.
+ */
+export function collectBlocks(scenery: Scenery): Block[] {
+  scenery.group.updateMatrixWorld(true);
+
+  const boxOf = (mesh: THREE.Mesh): Block | null => {
+    const box = new THREE.Box3().setFromObject(mesh);
+    if (box.isEmpty()) return null;
+    return { min: box.min, max: box.max };
+  };
+
+  // Authored volumes if there are any. A map that marked its own collision
+  // meant what it marked, and guessing alongside it would only add walls the
+  // artist deliberately left open.
+  if (scenery.colliders.length > 0) {
+    return scenery.colliders
+      .map(boxOf)
+      .filter((block): block is Block => block !== null);
+  }
+
+  const blocks: Block[] = [];
+  scenery.group.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.visible || NO_COLLIDE.test(mesh.name)) return;
+
+    const block = boxOf(mesh);
+    if (!block) return;
+    // Floors, kerbs and paint on the road: things you stand on, not into.
+    if (block.max.y - block.min.y < FLAT_ENOUGH) return;
+
+    blocks.push(block);
+  });
+
+  return blocks;
 }
 
 /** What a marker will cost in VRAM, so a heavy map says so before it loads. */

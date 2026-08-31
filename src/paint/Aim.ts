@@ -99,8 +99,9 @@ export class Aim {
     // concatenate straight into a continuous 0..1 coordinate along the wall.
     // The strip's own panel count, not a global: two walls in the same
     // world can be cut into different numbers of canvases.
-    result.u =
-      (panel.index + hit.uv.x) / this.walls.strip(panel.side).panels.length;
+    const strip = this.walls.strip(panel.side);
+    if (!strip) return;
+    result.u = (panel.index + hit.uv.x) / strip.panels.length;
     result.v = hit.uv.y;
     result.paintable = true;
   }

@@ -1,6 +1,6 @@
 import { stampDab } from "./Brush";
 import { capExtent } from "./CapGeometry";
-import { TEXTURE, isNeon } from "../config";
+import { isNeon } from "../config";
 import { dabSteps } from "./StrokeMath";
 import type { Stroke } from "../state/types";
 import { CAP_BY_ID, type CapId } from "../config";
@@ -14,8 +14,15 @@ export type RenderOptions = {
   restrictTo?: ReadonlySet<number>;
 };
 
-/** Stroke radii are stored in meters; canvases work in pixels. */
-const toPixels = (meters: number) => meters * TEXTURE.PIXELS_PER_METER;
+/**
+ * Stroke radii are stored in meters; canvases work in pixels.
+ *
+ * The conversion belongs to the wall rather than to a constant, because a wall
+ * too big for the standard density is painted at a lower one — and a tag laid
+ * down on it still has to come out the size it was sprayed.
+ */
+const toPixels = (strip: WallStrip, meters: number) =>
+  meters * strip.pixelsPerMeter;
 
 /**
  * Stamps one dab in strip space, spilling into every panel it overlaps.
@@ -97,7 +104,7 @@ export function renderStroke(
     const x = point.u * strip.widthPx;
     // UV v grows upwards, canvas y grows downwards.
     const y = (1 - point.v) * strip.heightPx;
-    const radiusPx = toPixels(point.r);
+    const radiusPx = toPixels(strip, point.r);
 
     if (i === 0) {
       stampAcrossPanels(
@@ -121,7 +128,7 @@ export function renderStroke(
     const prev = stroke.points[i - 1];
     const px = prev.u * strip.widthPx;
     const py = (1 - prev.v) * strip.heightPx;
-    const prevRadiusPx = toPixels(prev.r);
+    const prevRadiusPx = toPixels(strip, prev.r);
     const prevTwist = prev.w ?? 0;
     const twist = point.w ?? 0;
 
@@ -156,7 +163,7 @@ export function panelsTouchedBy(strip: WallStrip, stroke: Stroke): Set<number> {
     // Interpolated dabs sit on the segment, so the span of the two endpoints
     // covers every panel they pass through.
     const radiusPx = capExtent(
-      toPixels(Math.max(point.r, prev.r)),
+      toPixels(strip, Math.max(point.r, prev.r)),
       CAP_BY_ID.get(stroke.cap)!,
     );
     const { first, last } = strip.panelRange(

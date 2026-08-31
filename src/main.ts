@@ -3,9 +3,9 @@ import { Loop } from "./core/Loop";
 import { Input } from "./core/Input";
 import * as THREE from "three";
 import { buildStreet, buildNight } from "./world/Street";
-import { loadScenery, markerCostMB } from "./world/Scenery";
-import { setCorridor } from "./world/Colliders";
-import type { WallPlacement } from "./world/WallPlacement";
+import { loadScenery, collectBlocks, markerCostMB } from "./world/Scenery";
+import { setCorridor, setBlocks } from "./world/Colliders";
+import { streetWall, type WallPlacement } from "./world/WallPlacement";
 import { WallSystem } from "./world/WallSystem";
 import {
   loadWallSurface,
@@ -38,7 +38,7 @@ import {
   getLocale,
   onLocaleChange,
 } from "./i18n/i18n";
-import { ADS, DEFAULT_SURFACE_SLUGS, LINKS, type Side } from "./config";
+import { ADS, DEFAULT_SURFACE_SLUGS, LINKS, type SurfaceId } from "./config";
 
 const canvas = document.getElementById("app") as HTMLCanvasElement;
 const hud = document.getElementById("hud")!;
@@ -67,7 +67,7 @@ const input = new Input(canvas);
  * paintable walls come from the file's `paint.*` markers instead of from the
  * two sides of the alley.
  */
-const SCENERY_URL: string | null = "/maps/alley.glb";
+const SCENERY_URL: string | null = "/maps/low-city.glb";
 
 const scenery = SCENERY_URL ? await loadScenery(SCENERY_URL) : null;
 
@@ -92,6 +92,11 @@ if (scenery) {
 
   const size = scenery.bounds.getSize(new THREE.Vector3());
   setCorridor(size.x / 2, size.z / 2);
+
+  // After the shift above: the boxes are in world space and would otherwise be
+  // left standing where the scene used to be.
+  const blocks = collectBlocks(scenery);
+  setBlocks(blocks);
   // The file brings a floor and buildings but no light: the game's own night
   // goes over it, with the lamps on this scene's corners rather than the
   // alley's.
@@ -99,7 +104,7 @@ if (scenery) {
 
   console.info(
     `[scenery] ${size.x.toFixed(1)} x ${size.y.toFixed(1)} x ${size.z.toFixed(1)} m, ` +
-      `${scenery.markers.length} paintable marker(s)`,
+      `${scenery.markers.length} paintable marker(s), ${blocks.length} solid`,
   );
   for (const marker of scenery.markers) {
     const { length, height } = marker.placement;
@@ -122,7 +127,7 @@ loading.advance();
 // repainting every panel. The loading screen is already up, in the markup.
 // Which surface is on which side. The menu edits this in place as choices are
 // made, so reopening the settings shows what is actually on the walls.
-const dressing: Record<Side, string> = { ...DEFAULT_SURFACE_SLUGS };
+const dressing: Record<SurfaceId, string> = { ...DEFAULT_SURFACE_SLUGS };
 
 const surfaces = await loadWallSurfaces(
   {
@@ -138,21 +143,16 @@ await loading.breathe();
  * Where the paintable walls go.
  *
  * From the file's markers when there is one, in the order they were found —
- * `Side` is still a two-value union on this branch, so a spike gets two walls
+ * `SurfaceId` is still a two-value union on this branch, so a spike gets two walls
  * at most. A marker's own id is what a real map would key its journal by.
  */
-const placements: Partial<Record<Side, WallPlacement>> = {};
-if (scenery) {
-  const found = scenery.markers;
-  if (found[0]) placements.left = found[0].placement;
-  if (found[1]) placements.right = found[1].placement;
-  // With one marker the other wall would still be built at the street's
-  // default, floating in the middle of somebody's alley. Put it behind the
-  // first one, out of the way, until Side stops being left-or-right.
-  if (found.length === 1) {
-    placements.right = { ...found[0].placement, centre: new THREE.Vector3(0, -50, 0) };
-  }
-}
+/**
+ * Where the paintable walls go: one per marker in the file, keyed by the name
+ * the artist gave it. With no file, the hand-built street's own two.
+ */
+const placements: Record<SurfaceId, WallPlacement> = scenery
+  ? Object.fromEntries(scenery.markers.map((m) => [m.id, m.placement]))
+  : { left: streetWall("left"), right: streetWall("right") };
 
 const walls = new WallSystem(surfaces, placements);
 engine.scene.add(walls.group);
@@ -261,7 +261,7 @@ buildPhoto(engine, () => player.controls.isLocked);
  * wall in procedural concrete instead of leaving the player looking at an
  * error they cannot act on.
  */
-async function redress(side: Side, slug: string) {
+async function redress(side: SurfaceId, slug: string) {
   const surface = await loadWallSurface(specOf(entryFor(catalogue, slug)));
   walls.dress(side, surface);
   store.repaintSide(side);

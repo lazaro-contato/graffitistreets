@@ -1,4 +1,4 @@
-import type { Side, CapId } from "../config";
+import type { SurfaceId, CapId } from "../config";
 
 /** A single sampled point along a stroke, in wall strip coordinates. */
 export type StrokePoint = {
@@ -24,7 +24,7 @@ export type StrokePoint = {
  */
 export type Stroke = {
   id: string;
-  side: Side;
+  side: SurfaceId;
   color: string;
   /** Recorded per stroke: a replay must use the cap it was painted with. */
   cap: CapId;
@@ -38,7 +38,7 @@ export type PaintMessage =
   | {
       kind: "stroke:append";
       strokeId: string;
-      side: Side;
+      side: SurfaceId;
       color: string;
       cap: CapId;
       point: StrokePoint;
@@ -46,7 +46,7 @@ export type PaintMessage =
     }
   | { kind: "stroke:end"; strokeId: string }
   | { kind: "stroke:undo"; authorId: string }
-  | { kind: "strip:clear"; side: Side };
+  | { kind: "strip:clear"; side: SurfaceId };
 
 /** The one message that carries paint. Pulled out because several layers pass
  *  it around whole rather than destructuring it into a long argument list. */
