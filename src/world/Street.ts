@@ -213,6 +213,45 @@ function buildStreetLamp(
   scene.add(light.target);
 }
 
+/**
+ * Daylight, for looking at a map rather than for playing in one.
+ *
+ * Local to this spike and deliberately so: the day/night switch on the way in
+ * from PR #10 carries a proper SkySpec, with the lamps and the neon glow as
+ * multipliers off one setting. This is the cheap version, here because a map
+ * lit by two street lamps spread over twenty-six metres is mostly too dark to
+ * judge. It should be deleted the day that branch lands.
+ */
+export function buildDay(scene: THREE.Scene) {
+  const sky = "#aebbc9";
+  scene.background = new THREE.Color(sky);
+  // Pushed well back: this is a map you are surveying, and fog that closes at
+  // eight metres hides the thing you opened daylight to see.
+  scene.fog = new THREE.Fog(sky, 25, 140);
+
+  // Overcast carries most of the light, so shape comes from the sky rather
+  // than from one hard source — which is what stops a modelled scene reading
+  // as a cutout under a spotlight.
+  scene.add(new THREE.HemisphereLight("#cdddef", "#6b6459", 2.2));
+
+  const sun = new THREE.DirectionalLight("#fff4e2", 1.6);
+  sun.position.set(-14, 26, -8);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  // A directional light's shadow camera is orthographic and has to be told how
+  // much world to cover; the default is a couple of metres and the map would
+  // have one lit corner.
+  const reach = 30;
+  sun.shadow.camera.left = -reach;
+  sun.shadow.camera.right = reach;
+  sun.shadow.camera.top = reach;
+  sun.shadow.camera.bottom = -reach;
+  sun.shadow.camera.far = 80;
+  sun.shadow.bias = -0.0008;
+  scene.add(sun);
+  scene.add(sun.target);
+}
+
 /** Builds the static scenery: road, kerbs, the enclosure, and the night. */
 /**
  * The night, and the lights that make it one.

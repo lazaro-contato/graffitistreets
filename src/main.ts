@@ -2,7 +2,7 @@ import { Engine } from "./core/Engine";
 import { Loop } from "./core/Loop";
 import { Input } from "./core/Input";
 import * as THREE from "three";
-import { buildStreet, buildNight } from "./world/Street";
+import { buildStreet, buildNight, buildDay } from "./world/Street";
 import { loadScenery, collectBlocks, markerCostMB } from "./world/Scenery";
 import { setCorridor, setBlocks } from "./world/Colliders";
 import { streetWall, type WallPlacement } from "./world/WallPlacement";
@@ -97,10 +97,13 @@ if (scenery) {
   // left standing where the scene used to be.
   const blocks = collectBlocks(scenery);
   setBlocks(blocks);
-  // The file brings a floor and buildings but no light: the game's own night
-  // goes over it, with the lamps on this scene's corners rather than the
-  // alley's.
-  buildNight(engine.scene, size.x / 2, size.z / 2);
+  // The file brings a floor and buildings but no light. Night by default, with
+  // the lamps on this scene's corners rather than the alley's; `?night` and
+  // `?day` in the address switch, which is enough of a control while the real
+  // one is still in review on another branch.
+  const daylight = !new URLSearchParams(location.search).has("night");
+  if (daylight) buildDay(engine.scene);
+  else buildNight(engine.scene, size.x / 2, size.z / 2);
 
   console.info(
     `[scenery] ${size.x.toFixed(1)} x ${size.y.toFixed(1)} x ${size.z.toFixed(1)} m, ` +
